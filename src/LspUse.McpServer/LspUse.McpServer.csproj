@@ -13,9 +13,9 @@
 
     <!-- Ship the LSP payload under an `lsp/` folder inside the nupkg. -->
     <ItemGroup>
-        <Content Include="lsp\**\*">
+        <Content Include="lsp/**/*">
           <Pack>true</Pack>
-          <PackagePath>tools\$(TargetFramework)\any\lsp\</PackagePath>
+          <PackagePath>tools/$(TargetFramework)/any/lsp</PackagePath>
           <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
         </Content>
     </ItemGroup>
