@@ -13,16 +13,16 @@
 
     <!-- Ship the LSP payload under an `lsp/` folder inside the nupkg. -->
     <ItemGroup>
-        <Content Include="lsp/**/*">
+        <Content Include="lsp\**\*">
           <Pack>true</Pack>
-          <PackagePath>tools/$(TargetFramework)/any/lsp</PackagePath>
+          <PackagePath>tools\$(TargetFramework)\any\lsp</PackagePath>
           <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
         </Content>
     </ItemGroup>
     
     <!-- Suppress NuGet warnings for LSP assemblies that are not references -->
     <PropertyGroup>
-        <NoWarn>$(NoWarn);NU5100</NoWarn>
+        <NoWarn>$(NoWarn);NU5100;NU5118</NoWarn>
     </PropertyGroup>
 
     <ItemGroup>
