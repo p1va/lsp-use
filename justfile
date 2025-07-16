@@ -44,7 +44,9 @@ roslyn-download:
        /p:PackageName=Microsoft.CodeAnalysis.LanguageServer.{{roslyn_platform}} \
        /p:PackageVersion={{roslyn_version}}
        
-  just cleanup-download
+  just \
+    --set roslyn_platform {{roslyn_platform}} \
+    cleanup-download
 
 
 # Runs roslyn with stdio communication
