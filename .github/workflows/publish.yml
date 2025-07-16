@@ -16,9 +16,8 @@ jobs:
       matrix:
         rid: [
           linux-x64
-          # win-x64,
-          # osx-x64,
-          # osx-arm64
+          win-x64,
+          osx-arm64
         ]
 
     steps:
@@ -65,8 +64,8 @@ jobs:
  
 
       # Push to NuGet.org (the API key must be stored as a repo secret).
-      # - name: Push to NuGet
-      #   env:
-      #     NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
-      #   run: |
-      #     just publish-no-confirm
+      - name: Publish to NuGet
+        env:
+          NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
+        run: |
+          just publish-no-confirm
