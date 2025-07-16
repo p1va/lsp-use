@@ -15,7 +15,7 @@ jobs:
     strategy:
       matrix:
         rid: [
-          linux-x64
+          linux-x64,
           win-x64,
           osx-arm64
         ]
