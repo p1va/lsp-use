@@ -1,0 +1,72 @@
+name: Publish lsp-use C# packages
+
+on:
+  push:
+    tags:
+      - '*.*.*'
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-publish:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        rid: [
+          linux-x64
+          # win-x64,
+          # osx-x64,
+          # osx-arm64
+        ]
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: extractions/setup-just@v3
+
+      - name: Get version from tag
+        run: echo "RELEASE_VERSION=${GITHUB_REF#refs/*/}" >> $GITHUB_ENV
+      
+      - name: setup dotnet
+        uses: actions/setup-dotnet@v3
+        with:
+          dotnet-version: '9.0.x'
+
+      - name: dotnet restore
+        run: dotnet restore
+
+      - name: download roslyn LSP for ${{ matrix.rid }}
+        run: |
+          just \
+            --set roslyn_platform ${{ matrix.rid }} \
+            roslyn-download
+
+      # Build & pack the RID-specific variant.
+      - name: pack
+        run: |
+          just \
+            --set roslyn_platform ${{ matrix.rid }} \
+            --set tool_version ${{ env.RELEASE_VERSION }} \
+            pack
+
+      # Build & pack the RID-specific variant.
+      - name: list
+        run: |
+          ls src/LspUse.McpServer
+          ls src/LspUse.McpServer/nupkg
+      
+      # Upload nupkg to build artifacts
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: "LspUse.Csharp.${{ matrix.rid }}.${{ env.RELEASE_VERSION }}.nupkg"
+          path: "src/LspUse.McpServer/nupkg/LspUse.Csharp.${{ matrix.rid }}.${{ env.RELEASE_VERSION }}.nupkg"
+ 
+
+      # Push to NuGet.org (the API key must be stored as a repo secret).
+      # - name: Push to NuGet
+      #   env:
+      #     NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
+      #   run: |
+      #     just publish-no-confirm

@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "csharp": {
+      "command": "lsp-use",
+      "args": [
+        "--workspace",
+        ".",
+        "--sln",
+        "lsp-use.sln"
+      ]
+    }
+  }
+}

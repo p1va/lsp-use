@@ -1,0 +1,8 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <ItemGroup>
+      <PackageReference Include="StreamJsonRpc" Version="2.22.11" />
+      <PackageReference Include="StreamRpc" Version="2.1.56" />
+    </ItemGroup>
+
+</Project>
