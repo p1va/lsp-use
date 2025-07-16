@@ -34,13 +34,19 @@ Add the following to your `.mcp.json` file to configure Claude Code to use the M
   "mcpServers": {
     "csharp": {
       "command": "lsp-use",
-      "args": []
+      "args": [
+        "--workspace",
+        ".",
+        "--sln",
+        "your-solution.sln"
+      ]
     }
   }
 }
+
 ```
 
-We recommend using the "csharp" name for the MCP server as it provides the clearest indication of functionality.
+Claude Code recommends using `csharp` name for the MCP server as it provides the clearest indication of functionality.
 
 ## Available Tools
 
