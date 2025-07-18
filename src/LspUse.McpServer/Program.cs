@@ -64,21 +64,20 @@ var logger = host.Services.GetRequiredService<ILoggerFactory>().CreateLogger<Pro
 
 logger.LogInformation("[Program] Starting application with {Args}", string.Join(" ", args));
 
-var service = host.Services.GetRequiredService<IApplicationService>();
-
 logger.LogTrace("[Program] Initializing...");
 
 try
 {
     // TODO: Move to StartAsync in the hosted service?
-    await service.InitialiseAsync();
+    await host.Services
+        .GetRequiredService<IApplicationService>()
+        .InitialiseAsync();
 
-    logger.LogDebug(
-        "[Program] Initialized successfully. Now waiting for workspace to be loaded...");
+    logger.LogDebug("[Program] Initialized successfully. Starting host... (workspace may still be loading)");
 
-    await service.WaitForWorkspaceReadyAsync();
-
-    logger.LogInformation("[Program] Workspace loaded successfully: ready to accept requests");
+    // We no longer wait for the workspace to finish loading at start-up. All
+    // application service entry points now guard against a loading workspace
+    // and return a dedicated error until it is ready.
 
     await host.RunAsync();
 
