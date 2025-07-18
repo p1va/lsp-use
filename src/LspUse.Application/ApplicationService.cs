@@ -29,6 +29,30 @@ public class ApplicationService : IApplicationService
     private JsonRpcLspClient LanguageServer =>
         _languageServer ?? throw new InvalidOperationException("LSP client not initialized");
 
+    /// <summary>
+    /// Determines whether the Roslyn workspace has finished loading by checking
+    /// the <c>workspace/projectInitializationComplete</c> notification
+    /// completion task exposed by <see cref="WorkspaceNotificationHandler"/>.
+    /// </summary>
+    /// <returns><c>true</c> when the workspace load is complete or when the
+    /// notification handler is not available (e.g. for non-C# workspaces);
+    /// otherwise, <c>false</c>.</returns>
+    private bool IsWorkspaceReady()
+    {
+        var handler = _lspNotificationHandlers.OfType<WorkspaceNotificationHandler>()
+            .FirstOrDefault();
+
+        // If the handler is not present we assume the workspace does not need
+        // to signal readiness (non-Roslyn LS) and therefore treat it as ready.
+        return handler is null || handler.WorkspaceInitialization.IsCompleted;
+    }
+
+    private static ApplicationServiceError WorkspaceLoadingError() => new()
+    {
+        Message = "Workspace is still loading",
+        ErrorCode = ErrorCode.WorkspaceLoadInProgress
+    };
+
     public ApplicationService(IOptions<LanguageServerProcessConfiguration> options,
         IEnumerable<ILspNotificationHandler> handlers, ILogger<ApplicationService> logger,
         ILoggerFactory loggerFactory)
@@ -189,6 +213,16 @@ public class ApplicationService : IApplicationService
     {
         ArgumentNullException.ThrowIfNull(request);
 
+        if (!IsWorkspaceReady())
+        {
+            return WorkspaceLoadingError();
+        }
+
+        if (!IsWorkspaceReady())
+        {
+            return WorkspaceLoadingError();
+        }
+
         _logger.LogInformation("[{Name}] {@Request}", nameof(FindReferencesAsync), request);
 
         try
@@ -229,6 +263,11 @@ public class ApplicationService : IApplicationService
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
+
+        if (!IsWorkspaceReady())
+        {
+            return WorkspaceLoadingError();
+        }
 
         _logger.LogInformation("[{Name}] {@Request}", nameof(GoToDefinitionAsync), request);
 
@@ -271,6 +310,11 @@ public class ApplicationService : IApplicationService
     {
         ArgumentNullException.ThrowIfNull(request);
 
+        if (!IsWorkspaceReady())
+        {
+            return WorkspaceLoadingError();
+        }
+
         _logger.LogInformation("[{Name}] {@Request}", nameof(GoToTypeDefinitionAsync), request);
 
         try
@@ -311,6 +355,11 @@ public class ApplicationService : IApplicationService
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
+
+        if (!IsWorkspaceReady())
+        {
+            return WorkspaceLoadingError();
+        }
 
         _logger.LogInformation("[{Name}] {@Request}", nameof(GoToImplementationAsync), request);
 
@@ -363,6 +412,11 @@ public class ApplicationService : IApplicationService
     {
         ArgumentNullException.ThrowIfNull(request);
 
+        if (!IsWorkspaceReady())
+        {
+            return WorkspaceLoadingError();
+        }
+
         _logger.LogInformation("[Completion] File:{FilePath} Position:{Line}:{Character}",
             request.FilePath, request.Position.Line, request.Position.Character);
 
@@ -408,6 +462,11 @@ public class ApplicationService : IApplicationService
     {
         ArgumentNullException.ThrowIfNull(request);
 
+        if (!IsWorkspaceReady())
+        {
+            return WorkspaceLoadingError();
+        }
+
         _logger.LogInformation("[Hover] File:{FilePath} Position:{Line}:{Character}",
             request.FilePath, request.Position.Line, request.Position.Character);
 
@@ -452,6 +511,11 @@ public class ApplicationService : IApplicationService
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
+
+        if (!IsWorkspaceReady())
+        {
+            return WorkspaceLoadingError();
+        }
 
         try
         {
@@ -624,6 +688,11 @@ public class ApplicationService : IApplicationService
     {
         ArgumentNullException.ThrowIfNull(request);
 
+        if (!IsWorkspaceReady())
+        {
+            return WorkspaceLoadingError();
+        }
+
         try
         {
             var result = await ExecuteWithFileLifecycleAsync(request.FilePath, async (fileUri) =>
@@ -688,6 +757,11 @@ public class ApplicationService : IApplicationService
         DocumentDiagnosticsRequest request, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
+
+        if (!IsWorkspaceReady())
+        {
+            return WorkspaceLoadingError();
+        }
 
         _logger.LogInformation("[{Name}] {@Request}", nameof(GetDocumentDiagnosticsAsync), request);
 
@@ -815,6 +889,11 @@ public class ApplicationService : IApplicationService
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
+
+        if (!IsWorkspaceReady())
+        {
+            return WorkspaceLoadingError();
+        }
 
         _logger.LogInformation("[{Name}] {@Request}", nameof(RenameSymbolAsync), request);
 
