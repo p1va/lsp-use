@@ -12,7 +12,7 @@ An MCP interface to bring the structure of C# Language Server to LLMs
 
 ## Introduction
 
-By giving LLMs direct access to the same Language Server that humans use through VS Code or other IDEs the codebase becomes more structured and easy to discover and navigate. This shorten the feedback loop, allows for codebase-aware generation and is an efficent way of using the model's context.
+By giving LLMs direct access to the same Language Server that humans use through VS Code or other IDEs the codebase becomes more structured and easy to discover and navigate. This shorten the feedback loop, allows for codebase-aware generation and is an efficent use of the model's context.
 
 <details>
 
