@@ -2,7 +2,7 @@
 
 # lsp-use
 
-An MCP interface on top of C# Language Server (what powers C# DevKit for VS Code)
+An MCP interface to bring the structure of C# Language Server to LLMs
 
 [![NuGet: LspUse.Csharp.linux-x64](https://img.shields.io/nuget/v/LspUse.Csharp.linux-x64?label=LspUse.Csharp.linux-x64)](https://www.nuget.org/packages/LspUse.Csharp.linux-x64)
 [![NuGet: LspUse.Csharp.win-x64](https://img.shields.io/nuget/v/LspUse.Csharp.win-x64?label=LspUse.Csharp.win-x64)](https://www.nuget.org/packages/LspUse.Csharp.win-x64)
@@ -10,18 +10,100 @@ An MCP interface on top of C# Language Server (what powers C# DevKit for VS Code
 
 </div>
 
+## Introduction
+
+By giving LLMs direct access to the same Language Server that humans use through VS Code or other IDEs we make the codebase more structured and easy for them to discover and navigate. This shorten the feeback loop, allows for codebase-aware generation and is an efficent way of using the model's context.
+
+<details>
+
+<summary>More on the why</summary>
+
+### Problem
+
+Consider this scenario where `IsReady` disappears after a dependency update:
+
+```csharp
+using Your.Company.Lib;
+
+var client = new YourCompanyClient();
+
+if(client.IsReady) // Error after updating!
+```
+
+An LLM like `o3` encountering this would typically approach it by either
+- attempting to search the local .nuget package folder on the look-out for source code
+- write a temp console app that uses reflection to describe the type's symbols
+
+```csharp
+using System;
+using Your.Company.Lib;
+
+foreach (var p in typeof(YourCompanyClient).GetProperties())
+    Console.WriteLine($"{p.Name} : {p.PropertyType}");
+```
+
+This isn't ideal for multiple reasons:
+- longer feedback loops when developing
+- more tokens needed so the model's context fills quicker and it costs more
+- misses out on the structure of code that is so easy for humans to explore via IDEs
+
+### With access to LSP
+
+The LLM can now approach this by first retrieving the type's symbols similarly to what humans would do with autocomplete or source inspection.
+
+For example invoking `mcp__csharp__get_symbols(YourCompanyClient.cs)` would return
+
+```json
+[
+  {
+    "name": "YourCompanyClient",
+    "kind": "Class",
+    "location": {
+      "text": "public sealed class YourCompanyClient : IYourCompanyClient, IDisposable"
+    }
+  },
+  {
+    "name": "IsReadyAsync(CancellationToken ct = default)",
+    "kind": "Method",
+    "container": "YourCompanyClient",
+    "location": {
+      "text": "public Task IsReadyAsync(CancellationToken ct = default)"
+    }
+  },
+  {
+    "name": "DoWorkAsync(Request request, CancellationToken ct = default)",
+    "kind": "Method",
+    "container": "YourCompanyClient",
+    "location": {
+      "text": "public Task<Work> DoWorkAsync(Request request, CancellationToken ct = default)"
+    }
+  },
+]
+```
+
+### Benefits
+
+- **API Discovery**: No more guessing method signatures or writing reflection code
+- **Accurate Refactoring**: LSP-powered rename and find-references across entire codebases
+- **Rich Context**: Full type information, method signatures, documentation, and error diagnostics
+
+</details>
+
 ## Installation
 
 Install the platform-specific package globally using dotnet tool:
 
+**Linux**
 ```bash
-# For Linux x64
 dotnet tool install --global LspUse.Csharp.linux-x64
-
-# For Windows x64
+```
+**Windows**
+```bash
 dotnet tool install --global LspUse.Csharp.win-x64
+```
 
-# For macOS ARM64
+**Apple Silicon**
+```bash
 dotnet tool install --global LspUse.Csharp.osx-arm64
 ```
 
@@ -46,111 +128,85 @@ Add the following to your `.mcp.json` file to configure Claude Code to use the M
 
 ```
 
-Claude Code recommends using `csharp` name for the MCP server as it provides the clearest indication of functionality.
+Claude Code itself recommends using `csharp` as the name for the MCP server as it provides the clearest indication of functionality.
 
 ## Available Tools
 
-LspUse provides comprehensive C# code analysis tools through the Language Server Protocol:
+The server provides the following tools.
 
-### Navigation Tools
+### Symbols
 
-- **`find_references`**: Finds all references to a symbol in the codebase
-- **`go_to_definition`**: Navigates to the definition location of a symbol
-- **`go_to_type_definition`**: Navigates to the type definition of a symbol
-- **`go_to_implementation`**: Finds concrete implementations of interfaces or abstract members
+- **`mcp__csharp__search_symbols`**: Searches for symbols across the entire workspace e.g. `ApplicationService` or `Async`
+- **`mcp__csharp__get_symbols`**: Parses all symbols in a file and returns them file
 
-### Symbol Tools
+### Code Navigation & Edit
 
-- **`search_symbols`**: Searches for symbols across the entire workspace by name
-- **`get_symbols`**: Extracts all symbols from a specific file
+- **`mcp__csharp__find_references`**: Returns a list of all the references to a symbol across the codebase
+- **`mcp__csharp__rename_symbol`**: Renames a symbol across the entire codebase
+- **`mcp__csharp__go_to_definition`**: Returns the definition location of a symbol
+- **`mcp__csharp__go_to_type_definition`**: Returns a list of type definition of a symbol
+- **`mcp__csharp__go_to_implementation`**: Returns a list of implementations of interfaces or abstract members
 
-### Interactive Tools
+### Diagnostic
 
-- **`hover`**: Gets hover information for a symbol at a specific position
-- **`completion`**: Gets code completion suggestions at a specific position
+- **`mcp__csharp__get_diagnostics`**: Returns a list of  diagnostics (errors, warnings, hints) for a file. These include codes, error messages, severity and link to Microsoft's code page. 
 
-### Diagnostic Tools
 
-- **`get_diagnostics`**: Retrieves diagnostic information (errors, warnings, etc.) for a file
-- **`get_window_log_messages`**: Retrieves LSP server status messages and logs
+### Discovery
 
-### Code Modification Tools
+- **`mcp__csharp__hover`**: Gets XML documentation and description for a given symbol.
+- **`mcp__csharp__completion`**: Returns a list of code completion suggestions at a specific file and their kinds (available properties, local variables, types, methods)
 
-- **`rename_symbol`**: Renames a symbol across the entire codebase using LSP rename functionality
+### Troubleshooting
+
+- **`mcp__csharp__get_window_log_messages`**: Returns a list of messages from the server. Things like "solution successfully loaded"
+
 
 ## Workflows
 
-### 🔍 Class Discovery & Understanding
-```
-search_symbols("ApplicationService") → get_symbols(ApplicationService.cs)
-```
-**Use case**: Understanding what a class does, its methods, dependencies  
-**Value**: Full method signatures show parameters, return types, async patterns without opening files
+The tools can be combined to create productive workflows or Claude commands.
 
-### 🔗 Interface Analysis  
-```
-go_to_definition(IApplicationService) → find_references(IApplicationService location)
-```
-**Use case**: Understanding interface contracts and their implementations  
-**Value**: Full line context shows class inheritance, dependency injection registrations
+### Class Discovery & Understanding
+- **`mcp__csharp__search_symbols("ApplicationService")` → `mcp__csharp__get_symbols(ApplicationService.cs)`**
+- **Use case**: Understanding what a class does, its methods, dependencies
+- **Value**: Full method signatures show parameters, return types, async patterns without opening files
 
-### 📊 Dependency Mapping
-```
-find_references(_rpc field) → go_to_type_definition(JsonRpc usage)
-```
-**Use case**: Understanding external dependencies and how they're used  
-**Value**: Full context shows field types, see framework class inheritance
+### Interface Analysis  
+- **`mcp__csharp__go_to_definition(IApplicationService)` → `mcp__csharp__find_references(IApplicationService location)`**
+- **Use case**: Understanding interface contracts and their implementations  
+- **Value**: Full line context shows class inheritance, dependency injection registrations
 
-### 🧭 Architecture Navigation
-```
-search_symbols("DefinitionAsync") → go_to_definition(specific method) → find_references(that method)
-```
-**Use case**: Tracing how functionality flows through layers  
-**Value**: Understand call chains and architectural boundaries
+### Dependency Mapping
+- **`mcp__csharp__find_references(_rpc field)` → `mcp__csharp__go_to_type_definition(JsonRpc usage) → mcp__csharp__get_symbols(JsonRpc)`**
+- **Use case**: Understanding external dependencies and how they're used  
+- **Value**: Full context shows field types, available methods
 
-### 🔄 Pattern Analysis
-```
-search_symbols("Async") → get_symbols(multiple files)
-```
-**Use case**: Understanding async patterns, naming conventions  
-**Value**: Identify consistency in API design and implementation patterns
+### Architecture Navigation
+- **`mcp__csharp__search_symbols("DefinitionAsync")` → `mcp__csharp__go_to_definition(specific method) → mcp__csharp__find_references(that method)`**
+- **Use case**: Tracing how functionality flows through layers  
+- **Value**: Understand call chains and architectural boundaries
 
-### 🎯 Refactoring Planning
-```
-find_references(method/field) → go_to_definition(each usage context)
-```
-**Use case**: Impact analysis before making changes  
-**Value**: Assess refactoring scope and identify breaking changes
+### Pattern Analysis
+- **`mcp__csharp__search_symbols("Async")` → `mcp__csharp__get_symbols(multiple files)`**
+- **Use case**: Understanding async patterns, naming conventions  
+- **Value**: Identify consistency in API design and implementation patterns
 
-### 🔬 Type Exploration (Framework/Library APIs)
-```
-go_to_type_definition(System.Console) → get_symbols(decompiled Console.cs)
-```
-**Use case**: Understanding available methods/properties on framework types  
-**Value**: Complete API discovery without documentation lookup
+### Refactoring Planning
+- **`mcp__csharp__find_references(method/field)` → `mcp__csharp__go_to_definition(each usage context)`**
+- **Use case**: Impact analysis before making changes  
+- **Value**: Assess refactoring scope and identify breaking changes
 
-### 🔧 Symbol Refactoring
-```
-find_references(symbol) → rename_symbol(filePath, line, character, newName)
-```
-**Use case**: Safely renaming symbols across the entire codebase  
-**Value**: Automated refactoring with LSP-level accuracy and safety
+### Type Exploration (Framework/Library APIs)
+- **`mcp__csharp__go_to_type_definition(System.Console)` → `mcp__csharp__get_symbols(decompiled Console.cs)`**
+- **Use case**: Understanding available methods/properties on framework types  
+- **Value**: Complete API discovery without documentation lookup
 
-## Features
+### Error Analysis & Debugging
+- **`mcp__csharp__get_diagnostics(file.cs)` → `mcp__csharp__go_to_definition(error location)` → `mcp__csharp__hover(symbol`**
+- **Use case**: Understanding compilation errors, warnings, and hints in context  
+- **Value**: Provides error codes, messages, severity levels, and links to Microsoft documentation for quick resolution
 
-- **Rich Context**: All tools include enriched text content showing full line context
-- **LSP-Level Accuracy**: Uses the same language server that powers VS Code C# DevKit
-- **Cross-File Operations**: Navigate and refactor across entire solutions
-- **Framework Integration**: Access decompiled framework types and APIs
-- **Atomic Operations**: Rename operations succeed or fail atomically
-- **Real-time Diagnostics**: Get live error and warning information
-
-## Requirements
-
-- .NET 9.0 or later
-- A C# solution or project to analyze
-- Claude Code with MCP support
-
-## License
-
-[Add your license information here]
+### Symbol Refactoring
+- **`mcp__csharp__find_references(symbol)` → `mcp__csharp__rename_symbol(filePath, line, character, newName)`**
+- **Use case**: Safely renaming symbols across the entire codebase  
+- **Value**: Automated refactoring with LSP-level accuracy and safety
