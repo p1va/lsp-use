@@ -47,11 +47,12 @@ public class ApplicationService : IApplicationService
         return handler is null || handler.WorkspaceInitialization.IsCompleted;
     }
 
-    private static ApplicationServiceError WorkspaceLoadingError() => new()
-    {
-        Message = "Workspace is still loading",
-        ErrorCode = ErrorCode.WorkspaceLoadInProgress
-    };
+    private static ApplicationServiceError WorkspaceLoadingError() =>
+        new()
+        {
+            Message = "Workspace is still loading",
+            ErrorCode = ErrorCode.WorkspaceLoadInProgress
+        };
 
     public ApplicationService(IOptions<LanguageServerProcessConfiguration> options,
         IEnumerable<ILspNotificationHandler> handlers, ILogger<ApplicationService> logger,
@@ -208,20 +209,14 @@ public class ApplicationService : IApplicationService
         _logger.LogInformation("Successully loaded workspace");
     }
 
-    public async Task<OneOf<FindReferencesSuccess, ApplicationServiceError>> FindReferencesAsync(FindReferencesRequest request,
-        CancellationToken cancellationToken = default)
+    public async Task<OneOf<FindReferencesSuccess, ApplicationServiceError>> FindReferencesAsync(
+        FindReferencesRequest request, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
 
-        if (!IsWorkspaceReady())
-        {
-            return WorkspaceLoadingError();
-        }
+        if (!IsWorkspaceReady()) return WorkspaceLoadingError();
 
-        if (!IsWorkspaceReady())
-        {
-            return WorkspaceLoadingError();
-        }
+        if (!IsWorkspaceReady()) return WorkspaceLoadingError();
 
         _logger.LogInformation("[{Name}] {@Request}", nameof(FindReferencesAsync), request);
 
@@ -248,7 +243,8 @@ public class ApplicationService : IApplicationService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "[FindReferences] Error occurred while processing find references request for {FilePath}:{Line}:{Character}",
+            _logger.LogError(ex,
+                "[FindReferences] Error occurred while processing find references request for {FilePath}:{Line}:{Character}",
                 request.FilePath, request.Position.Line, request.Position.Character);
 
             return new ApplicationServiceError
@@ -259,15 +255,12 @@ public class ApplicationService : IApplicationService
         }
     }
 
-    public async Task<OneOf<GoToSuccess, ApplicationServiceError>> GoToDefinitionAsync(GoToRequest request,
-        CancellationToken cancellationToken = default)
+    public async Task<OneOf<GoToSuccess, ApplicationServiceError>> GoToDefinitionAsync(
+        GoToRequest request, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
 
-        if (!IsWorkspaceReady())
-        {
-            return WorkspaceLoadingError();
-        }
+        if (!IsWorkspaceReady()) return WorkspaceLoadingError();
 
         _logger.LogInformation("[{Name}] {@Request}", nameof(GoToDefinitionAsync), request);
 
@@ -294,7 +287,8 @@ public class ApplicationService : IApplicationService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "[GoToDefinition] Error occurred while processing go to definition request for {FilePath}:{Line}:{Character}",
+            _logger.LogError(ex,
+                "[GoToDefinition] Error occurred while processing go to definition request for {FilePath}:{Line}:{Character}",
                 request.FilePath, request.Position.Line, request.Position.Character);
 
             return new ApplicationServiceError
@@ -305,15 +299,12 @@ public class ApplicationService : IApplicationService
         }
     }
 
-    public async Task<OneOf<GoToSuccess, ApplicationServiceError>> GoToTypeDefinitionAsync(GoToRequest request,
-        CancellationToken cancellationToken = default)
+    public async Task<OneOf<GoToSuccess, ApplicationServiceError>> GoToTypeDefinitionAsync(
+        GoToRequest request, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
 
-        if (!IsWorkspaceReady())
-        {
-            return WorkspaceLoadingError();
-        }
+        if (!IsWorkspaceReady()) return WorkspaceLoadingError();
 
         _logger.LogInformation("[{Name}] {@Request}", nameof(GoToTypeDefinitionAsync), request);
 
@@ -321,11 +312,12 @@ public class ApplicationService : IApplicationService
         {
             var result = await ExecuteWithFileLifecycleAsync(request.FilePath, async (fileUri) =>
             {
-                var typeDefinitions = await LanguageServer.TypeDefinitionAsync(new DocumentClientRequest
-                {
-                    Document = fileUri,
-                    Position = request.Position.ToZeroBased()
-                }, cancellationToken);
+                var typeDefinitions = await LanguageServer.TypeDefinitionAsync(
+                    new DocumentClientRequest
+                    {
+                        Document = fileUri,
+                        Position = request.Position.ToZeroBased()
+                    }, cancellationToken);
 
                 var locations = typeDefinitions.Select(x => x.ToSymbolLocation());
                 var enrichedLocations = await locations.EnrichWithTextAsync(cancellationToken);
@@ -340,7 +332,8 @@ public class ApplicationService : IApplicationService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "[GoToTypeDefinition] Error occurred while processing go to type definition request for {FilePath}:{Line}:{Character}",
+            _logger.LogError(ex,
+                "[GoToTypeDefinition] Error occurred while processing go to type definition request for {FilePath}:{Line}:{Character}",
                 request.FilePath, request.Position.Line, request.Position.Character);
 
             return new ApplicationServiceError
@@ -351,15 +344,12 @@ public class ApplicationService : IApplicationService
         }
     }
 
-    public async Task<OneOf<GoToSuccess, ApplicationServiceError>> GoToImplementationAsync(GoToRequest request,
-        CancellationToken cancellationToken = default)
+    public async Task<OneOf<GoToSuccess, ApplicationServiceError>> GoToImplementationAsync(
+        GoToRequest request, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
 
-        if (!IsWorkspaceReady())
-        {
-            return WorkspaceLoadingError();
-        }
+        if (!IsWorkspaceReady()) return WorkspaceLoadingError();
 
         _logger.LogInformation("[{Name}] {@Request}", nameof(GoToImplementationAsync), request);
 
@@ -367,11 +357,12 @@ public class ApplicationService : IApplicationService
         {
             var result = await ExecuteWithFileLifecycleAsync(request.FilePath, async (fileUri) =>
             {
-                var implementations = await LanguageServer.ImplementationAsync(new DocumentClientRequest
-                {
-                    Document = fileUri,
-                    Position = request.Position.ToZeroBased()
-                }, cancellationToken);
+                var implementations = await LanguageServer.ImplementationAsync(
+                    new DocumentClientRequest
+                    {
+                        Document = fileUri,
+                        Position = request.Position.ToZeroBased()
+                    }, cancellationToken);
 
                 var locations = implementations.Select(x => x.ToSymbolLocation());
                 var enrichedLocations = await locations.EnrichWithTextAsync(cancellationToken);
@@ -386,7 +377,8 @@ public class ApplicationService : IApplicationService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "[GoToImplementation] Error occurred while processing go to implementation request for {FilePath}:{Line}:{Character}",
+            _logger.LogError(ex,
+                "[GoToImplementation] Error occurred while processing go to implementation request for {FilePath}:{Line}:{Character}",
                 request.FilePath, request.Position.Line, request.Position.Character);
 
             return new ApplicationServiceError
@@ -407,15 +399,12 @@ public class ApplicationService : IApplicationService
             _ => "plaintext"
         };
 
-    public async Task<OneOf<CompletionSuccess, ApplicationServiceError>> CompletionAsync(CompletionRequest request,
-        CancellationToken cancellationToken = default)
+    public async Task<OneOf<CompletionSuccess, ApplicationServiceError>> CompletionAsync(
+        CompletionRequest request, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
 
-        if (!IsWorkspaceReady())
-        {
-            return WorkspaceLoadingError();
-        }
+        if (!IsWorkspaceReady()) return WorkspaceLoadingError();
 
         _logger.LogInformation("[Completion] File:{FilePath} Position:{Line}:{Character}",
             request.FilePath, request.Position.Line, request.Position.Character);
@@ -446,7 +435,8 @@ public class ApplicationService : IApplicationService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "[Completion] Error occurred while processing completion request for {FilePath}:{Line}:{Character}",
+            _logger.LogError(ex,
+                "[Completion] Error occurred while processing completion request for {FilePath}:{Line}:{Character}",
                 request.FilePath, request.Position.Line, request.Position.Character);
 
             return new ApplicationServiceError
@@ -462,10 +452,7 @@ public class ApplicationService : IApplicationService
     {
         ArgumentNullException.ThrowIfNull(request);
 
-        if (!IsWorkspaceReady())
-        {
-            return WorkspaceLoadingError();
-        }
+        if (!IsWorkspaceReady()) return WorkspaceLoadingError();
 
         _logger.LogInformation("[Hover] File:{FilePath} Position:{Line}:{Character}",
             request.FilePath, request.Position.Line, request.Position.Character);
@@ -496,7 +483,8 @@ public class ApplicationService : IApplicationService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "[Hover] Error occurred while processing hover request for {FilePath}:{Line}:{Character}",
+            _logger.LogError(ex,
+                "[Hover] Error occurred while processing hover request for {FilePath}:{Line}:{Character}",
                 request.FilePath, request.Position.Line, request.Position.Character);
 
             return new ApplicationServiceError
@@ -507,30 +495,28 @@ public class ApplicationService : IApplicationService
         }
     }
 
-    public async Task<OneOf<SearchSymbolSuccess, ApplicationServiceError>> SearchSymbolAsync(SearchSymbolRequest request,
-        CancellationToken cancellationToken = default)
+    public async Task<OneOf<SearchSymbolSuccess, ApplicationServiceError>> SearchSymbolAsync(
+        SearchSymbolRequest request, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
 
-        if (!IsWorkspaceReady())
-        {
-            return WorkspaceLoadingError();
-        }
+        if (!IsWorkspaceReady()) return WorkspaceLoadingError();
 
         try
         {
-            var matchingSymbols = await LanguageServer.WorkspaceSymbolAsync(new WorkspaceSymbolParams
-            {
-                Query = request.Query
-            }, cancellationToken);
+            var matchingSymbols = await LanguageServer.WorkspaceSymbolAsync(
+                new WorkspaceSymbolParams
+                {
+                    Query = request.Query
+                }, cancellationToken);
 
             var documentSymbols = matchingSymbols.Select(s => new DocumentSymbol
-            {
-                Name = s.Name ?? string.Empty,
-                Kind = s.Kind?.ToString() ?? "Unknown",
-                ContainerName = s.ContainerName,
-                Location = s.Location?.ToSymbolLocation()
-            })
+                {
+                    Name = s.Name ?? string.Empty,
+                    Kind = s.Kind?.ToString() ?? "Unknown",
+                    ContainerName = s.ContainerName,
+                    Location = s.Location?.ToSymbolLocation()
+                })
                 .ToList();
 
             // Extract locations, enrich them, and create a lookup
@@ -561,7 +547,8 @@ public class ApplicationService : IApplicationService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "[SearchSymbol] Error occurred while processing search symbol request for query: {Query}",
+            _logger.LogError(ex,
+                "[SearchSymbol] Error occurred while processing search symbol request for query: {Query}",
                 request.Query);
 
             return new ApplicationServiceError
@@ -572,8 +559,8 @@ public class ApplicationService : IApplicationService
         }
     }
 
-    public async Task<OneOf<WindowLog, ApplicationServiceError>> GetWindowLogMessagesAsync(WindowLogRequest request,
-        CancellationToken cancellationToken = default)
+    public Task<OneOf<WindowLog, ApplicationServiceError>> GetWindowLogMessagesAsync(
+        WindowLogRequest request, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
 
@@ -584,36 +571,43 @@ public class ApplicationService : IApplicationService
 
         try
         {
-            await Task.CompletedTask;
-
-            var windowNotificationHandler = _lspNotificationHandlers.OfType<WindowNotificationHandler>()
+            var windowNotificationHandler = _lspNotificationHandlers
+                .OfType<WindowNotificationHandler>()
                 .FirstOrDefault();
 
             if (windowNotificationHandler == null)
             {
                 _logger.LogWarning("[GetWindowLogMessages] WindowNotificationHandler not found");
 
-                return new WindowLog([]);
+                var empty = new WindowLogMessage[]
+                {
+                };
+
+                return Task.FromResult(
+                    OneOf<WindowLog, ApplicationServiceError>.FromT0(new WindowLog(empty)));
             }
 
-            var logMessages = windowNotificationHandler.LogMessages
-                .Select(x => new WindowLogMessage(x.Message ?? string.Empty, x.MessageType))
+            var logMessages = windowNotificationHandler.LogMessages.Select(x =>
+                    new WindowLogMessage(x.Message ?? string.Empty, x.MessageType))
                 .ToList();
 
             _logger.LogInformation("[GetWindowLogMessages] Retrieved {Count} log messages",
                 logMessages.Count);
 
-            return new WindowLog(logMessages);
+            return Task.FromResult(
+                OneOf<WindowLog, ApplicationServiceError>.FromT0(new WindowLog(logMessages)));
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "[GetWindowLogMessages] Error occurred while retrieving window log messages");
+            _logger.LogError(ex,
+                "[GetWindowLogMessages] Error occurred while retrieving window log messages");
 
-            return new ApplicationServiceError
-            {
-                Message = "Failed to get window log messages",
-                Exception = ex
-            };
+            return Task.FromResult(OneOf<WindowLog, ApplicationServiceError>.FromT1(
+                new ApplicationServiceError
+                {
+                    Message = "Failed to get window log messages",
+                    Exception = ex
+                }));
         }
     }
 
@@ -683,32 +677,30 @@ public class ApplicationService : IApplicationService
         }
     }
 
-    public async Task<OneOf<GetSymbolsSuccess, ApplicationServiceError>> GetDocumentSymbolsAsync(GetSymbolsRequest request,
-        CancellationToken cancellationToken = default)
+    public async Task<OneOf<GetSymbolsSuccess, ApplicationServiceError>> GetDocumentSymbolsAsync(
+        GetSymbolsRequest request, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
 
-        if (!IsWorkspaceReady())
-        {
-            return WorkspaceLoadingError();
-        }
+        if (!IsWorkspaceReady()) return WorkspaceLoadingError();
 
         try
         {
             var result = await ExecuteWithFileLifecycleAsync(request.FilePath, async (fileUri) =>
             {
-                var documentSymbols = await LanguageServer.DocumentSymbolAsync(new DocumentSymbolParams
-                {
-                    TextDocument = fileUri.ToDocumentIdentifier()
-                }, cancellationToken);
+                var documentSymbols = await LanguageServer.DocumentSymbolAsync(
+                    new DocumentSymbolParams
+                    {
+                        TextDocument = fileUri.ToDocumentIdentifier()
+                    }, cancellationToken);
 
                 var symbols = documentSymbols?.Select(x => new DocumentSymbol
-                {
-                    Name = x.Name,
-                    ContainerName = x.ContainerName,
-                    Kind = x.Kind.ToString(),
-                    Location = x.Location?.ToSymbolLocation()
-                })
+                    {
+                        Name = x.Name,
+                        ContainerName = x.ContainerName,
+                        Kind = x.Kind.ToString(),
+                        Location = x.Location?.ToSymbolLocation()
+                    })
                     .ToList() ?? [];
 
                 // Extract locations, enrich them, and create a lookup
@@ -742,7 +734,8 @@ public class ApplicationService : IApplicationService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "[GetDocumentSymbols] Error occurred while processing get document symbols request for {FilePath}",
+            _logger.LogError(ex,
+                "[GetDocumentSymbols] Error occurred while processing get document symbols request for {FilePath}",
                 request.FilePath);
 
             return new ApplicationServiceError
@@ -753,15 +746,13 @@ public class ApplicationService : IApplicationService
         }
     }
 
-    public async Task<OneOf<IEnumerable<DocumentDiagnostic>, ApplicationServiceError>> GetDocumentDiagnosticsAsync(
-        DocumentDiagnosticsRequest request, CancellationToken cancellationToken = default)
+    public async Task<OneOf<IEnumerable<DocumentDiagnostic>, ApplicationServiceError>>
+        GetDocumentDiagnosticsAsync(DocumentDiagnosticsRequest request,
+            CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
 
-        if (!IsWorkspaceReady())
-        {
-            return WorkspaceLoadingError();
-        }
+        if (!IsWorkspaceReady()) return WorkspaceLoadingError();
 
         _logger.LogInformation("[{Name}] {@Request}", nameof(GetDocumentDiagnosticsAsync), request);
 
@@ -861,7 +852,8 @@ public class ApplicationService : IApplicationService
 
                 // Enrich diagnostics with text content
                 var enrichedDiagnostics =
-                    await documentDiagnostics.EnrichWithTextAsync(request.FilePath, cancellationToken);
+                    await documentDiagnostics.EnrichWithTextAsync(request.FilePath,
+                        cancellationToken);
 
                 // Sort by severity (Error → Warning → Information → Hint) then by line number
                 return enrichedDiagnostics.OrderBy(d => d.SeverityOrder)
@@ -874,7 +866,8 @@ public class ApplicationService : IApplicationService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "[GetDocumentDiagnosticsAsync] Error occurred while processing get document diagnostics request for {FilePath}",
+            _logger.LogError(ex,
+                "[GetDocumentDiagnosticsAsync] Error occurred while processing get document diagnostics request for {FilePath}",
                 request.FilePath);
 
             return new ApplicationServiceError
@@ -885,15 +878,12 @@ public class ApplicationService : IApplicationService
         }
     }
 
-    public async Task<OneOf<RenameSymbolSuccess, ApplicationServiceError>> RenameSymbolAsync(RenameSymbolRequest request,
-        CancellationToken cancellationToken = default)
+    public async Task<OneOf<RenameSymbolSuccess, ApplicationServiceError>> RenameSymbolAsync(
+        RenameSymbolRequest request, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
 
-        if (!IsWorkspaceReady())
-        {
-            return WorkspaceLoadingError();
-        }
+        if (!IsWorkspaceReady()) return WorkspaceLoadingError();
 
         _logger.LogInformation("[{Name}] {@Request}", nameof(RenameSymbolAsync), request);
 
@@ -925,8 +915,10 @@ public class ApplicationService : IApplicationService
 
                 // TODO: Inject from DI
                 var applicator =
-                    new WorkspaceEditApplicator(_loggerFactory.CreateLogger<WorkspaceEditApplicator>());
-                var applicatorResult = await applicator.ApplyAsync(workspaceEdit, cancellationToken);
+                    new WorkspaceEditApplicator(
+                        _loggerFactory.CreateLogger<WorkspaceEditApplicator>());
+                var applicatorResult =
+                    await applicator.ApplyAsync(workspaceEdit, cancellationToken);
 
                 if (applicatorResult.HasErrors)
                 {
@@ -946,7 +938,8 @@ public class ApplicationService : IApplicationService
 
                 _logger.LogInformation(
                     "Successfully renamed symbol: {TotalFilesChanged} files, {TotalEditsApplied} edits, {TotalLinesChanged} lines",
-                    applicatorResult.TotalFilesChanged, applicatorResult.TotalEditsApplied, applicatorResult.TotalLinesChanged);
+                    applicatorResult.TotalFilesChanged, applicatorResult.TotalEditsApplied,
+                    applicatorResult.TotalLinesChanged);
 
                 return new RenameSymbolSuccess
                 {
@@ -963,8 +956,10 @@ public class ApplicationService : IApplicationService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "[RenameSymbol] Error occurred while processing rename symbol request for {FilePath}:{Line}:{Character} -> {NewName}",
-                request.FilePath, request.Position.Line, request.Position.Character, request.NewName);
+            _logger.LogError(ex,
+                "[RenameSymbol] Error occurred while processing rename symbol request for {FilePath}:{Line}:{Character} -> {NewName}",
+                request.FilePath, request.Position.Line, request.Position.Character,
+                request.NewName);
 
             return new ApplicationServiceError
             {
@@ -1039,7 +1034,7 @@ public class ApplicationService : IApplicationService
         {
             // Ignore dispose errors.
         }
-        
+
         GC.SuppressFinalize(this);
     }
 }

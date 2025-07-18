@@ -64,16 +64,18 @@ var logger = host.Services.GetRequiredService<ILoggerFactory>().CreateLogger<Pro
 
 logger.LogInformation("[Program] Starting application with {Args}", string.Join(" ", args));
 
-logger.LogTrace("[Program] Initializing...");
-
 try
 {
-    // TODO: Move to StartAsync in the hosted service?
-    await host.Services
-        .GetRequiredService<IApplicationService>()
-        .InitialiseAsync();
+    logger.LogTrace("Resolving DI...");
 
-    logger.LogDebug("[Program] Initialized successfully. Starting host... (workspace may still be loading)");
+    var service = host.Services.GetRequiredService<IApplicationService>();
+
+    logger.LogTrace("Initializing...");
+
+    // TODO: Move to StartAsync in the hosted service?
+    await service.InitialiseAsync();
+
+    logger.LogDebug("Initialized successfully. Starting host... (workspace may still be loading)");
 
     // We no longer wait for the workspace to finish loading at start-up. All
     // application service entry points now guard against a loading workspace
@@ -81,11 +83,11 @@ try
 
     await host.RunAsync();
 
-    logger.LogInformation("[Program] Shutting down");
+    logger.LogInformation("Shutting down");
 }
 catch (Exception e)
 {
-    logger.LogError(e, "[Program] Failed to initialize");
+    logger.LogError(e, "Failed to initialize");
 
     throw;
 }
