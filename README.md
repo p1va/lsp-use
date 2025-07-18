@@ -109,7 +109,9 @@ dotnet tool install --global LspUse.Csharp.osx-arm64
 
 ## Configuration
 
-Add the following to your `.mcp.json` file to configure Claude Code to use the MCP server:
+### Claude Code
+
+Update your `.mcp.json` file with a `csharp` where the path and sln files match the ones of your repo
 
 ```json
 {
@@ -128,7 +130,19 @@ Add the following to your `.mcp.json` file to configure Claude Code to use the M
 
 ```
 
-Claude Code itself recommends using `csharp` as the name for the MCP server as it provides the clearest indication of functionality.
+Update your `CLAUDE.md` with instructions on tool use recommending to prefer LSP-based discovery over traditional file read.
+
+### OpenAI Codex
+
+Add or update your `$HOME/.codex/config.toml`. Doesn't seem to work at repo level yet. 
+
+```toml
+[mcp_servers.csharp]
+command = "lsp-use"
+args = ["--workspace=/path/to/repo", "--sln=/path/to/repo/solution.sln"]
+```
+
+Update your `AGENTS.md` with instructions on tool use like [here](AGENTS.md).
 
 ## Available Tools
 
