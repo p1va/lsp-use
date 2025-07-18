@@ -3,6 +3,7 @@ using LspUse.Application;
 using LspUse.Application.Models;
 using Microsoft.Extensions.Logging;
 using ModelContextProtocol.Server;
+using OneOf;
 
 namespace LspUse.McpServer.Tools;
 
@@ -20,30 +21,35 @@ public static class WindowLogMessagesTool
 
         logger.LogInformation("[WindowLogMessagesTool] Getting window log messages");
 
-        try
-        {
-            var request = new WindowLogRequest();
-            var result = await service.GetWindowLogMessagesAsync(request, cancellationToken);
+        var request = new WindowLogRequest();
+        var result = await service.GetWindowLogMessagesAsync(request, cancellationToken);
 
-            logger.LogInformation("[WindowLogMessagesTool] Retrieved {Count} log messages",
-                result.LogMessages.Count());
-
-            return new
+        return result.Match(
+            success =>
             {
-                logMessages = result.LogMessages.Select(msg => new
-                {
-                    message = msg.Message,
-                    messageType = msg.MessageType.ToString()
-                })
-                    .ToArray(),
-                totalCount = result.LogMessages.Count()
-            };
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "[WindowLogMessagesTool] Error getting window log messages");
+                logger.LogInformation("[WindowLogMessagesTool] Retrieved {Count} log messages",
+                    success.LogMessages.Count());
 
-            throw;
-        }
+                return new
+                {
+                    logMessages = success.LogMessages.Select(msg => new
+                    {
+                        message = msg.Message,
+                        messageType = msg.MessageType.ToString()
+                    })
+                        .ToArray(),
+                    totalCount = success.LogMessages.Count()
+                };
+            },
+            error =>
+            {
+                logger.LogError("[WindowLogMessagesTool] Error: {Message} ({ErrorCode})", error.Message, error.ErrorCode);
+                if (error.Exception != null)
+                {
+                    logger.LogError(error.Exception, "Underlying exception for window log messages error");
+                }
+                throw new InvalidOperationException($"Window log messages operation failed: {error.Message}", error.Exception);
+            }
+        );
     }
 }

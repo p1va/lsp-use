@@ -9,7 +9,7 @@ public record RenameSymbolRequest
     public required string NewName { get; init; }
 }
 
-public record RenameSymbolResult
+public record RenameSymbolSuccess
 {
     [JsonPropertyName("success")]
     public required bool Success { get; init; }

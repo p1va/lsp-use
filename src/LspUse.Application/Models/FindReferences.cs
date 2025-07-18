@@ -7,7 +7,7 @@ public record FindReferencesRequest
     public bool IncludeDeclaration { get; init; } = true;
 }
 
-public record FindReferencesResult
+public record FindReferencesSuccess
 {
     public required IEnumerable<SymbolLocation> Value { get; init; }
 }

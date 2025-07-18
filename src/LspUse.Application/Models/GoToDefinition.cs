@@ -8,7 +8,7 @@ public record GoToRequest
     public required EditorPosition Position { get; init; }
 }
 
-public record GoToResult
+public record GoToSuccess
 {
     public required IEnumerable<SymbolLocation> Locations { get; init; }
 }

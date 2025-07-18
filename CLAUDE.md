@@ -38,6 +38,94 @@ just run-lsp linux-x64
 just run-lsp-named-pipes linux-x64
 ```
 
+## Git Workflow
+
+### Feature Branch Development
+
+All development should be done on feature branches rather than directly on main. Follow this workflow:
+
+**1. Create Feature Branch**
+```bash
+# Create and switch to a new feature branch
+git checkout -b features/name-of-the-feature
+
+# Or using git switch (newer command)
+git switch -c features/name-of-the-feature
+```
+
+**2. Development Process**
+- Make your changes on the feature branch
+- Commit changes with descriptive messages
+- Push the branch to GitHub:
+```bash
+git push -u origin features/name-of-the-feature
+```
+
+**3. Create Pull Request**
+```bash
+# Create PR using GitHub CLI
+gh pr create --title "Feature: Description of the feature" --body "Detailed description of changes"
+
+# Or create PR with more detailed body
+gh pr create --title "Feature: Add new MCP tool" --body "$(cat <<'EOF'
+## Summary
+- Added new MCP tool for workspace operations
+- Implemented comprehensive error handling
+- Added unit tests for new functionality
+
+## Test plan
+- [ ] Run `dotnet build` to ensure compilation
+- [ ] Run `dotnet test` to verify all tests pass
+- [ ] Test MCP tool functionality manually
+- [ ] Verify LSP integration works correctly
+
+🤖 Generated with [Claude Code](https://claude.ai/code)
+EOF
+)"
+```
+
+**4. Review and Merge**
+- Review the PR on GitHub
+- Address any feedback or requested changes
+- Once approved, merge the PR:
+```bash
+# Merge via GitHub CLI (creates merge commit)
+gh pr merge --merge
+
+# Or merge via GitHub web interface
+```
+
+**5. Cleanup**
+```bash
+# After PR is merged, clean up local branch
+git switch main
+git pull origin main
+git branch -d features/name-of-the-feature
+```
+
+### Branch Naming Convention
+
+Use descriptive branch names with the `features/` prefix:
+- `features/add-completion-tool`
+- `features/improve-error-handling`
+- `features/refactor-application-service`
+- `features/update-documentation`
+
+### Commit Message Guidelines
+
+- Use imperative mood ("Add feature" not "Added feature")
+- Keep first line under 50 characters
+- Include more detailed description if needed
+- Reference issues when applicable
+
+### Pull Request Guidelines
+
+- Include a clear title and description
+- List what was changed and why
+- Include test plan or verification steps
+- Use the 🤖 Generated with [Claude Code](https://claude.ai/code) footer
+- Link to relevant issues
+
 ## Architecture
 
 The project is structured as a multi-layered architecture:

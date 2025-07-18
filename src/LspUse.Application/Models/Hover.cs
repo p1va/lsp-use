@@ -6,7 +6,7 @@ public record HoverRequest
     public required EditorPosition Position { get; init; }
 }
 
-public record HoverResult
+public record HoverSuccess
 {
     public required string? Value { get; init; }
 }

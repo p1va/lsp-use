@@ -6,6 +6,7 @@ using LspUse.LanguageServerClient.Handlers;
 using LspUse.LanguageServerClient.Json;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using OneOf;
 using StreamJsonRpc;
 
 namespace LspUse.Application;
@@ -183,104 +184,168 @@ public class ApplicationService : IApplicationService
         _logger.LogInformation("Successully loaded workspace");
     }
 
-    public async Task<FindReferencesResult> FindReferencesAsync(FindReferencesRequest request,
+    public async Task<OneOf<FindReferencesSuccess, ApplicationServiceError>> FindReferencesAsync(FindReferencesRequest request,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
 
         _logger.LogInformation("[{Name}] {@Request}", nameof(FindReferencesAsync), request);
 
-        return await ExecuteWithFileLifecycleAsync(request.FilePath, async (fileUri) =>
+        try
         {
-            var references = await LanguageServer.ReferencesAsync(new DocumentClientRequest
+            var result = await ExecuteWithFileLifecycleAsync(request.FilePath, async (fileUri) =>
             {
-                Document = fileUri,
-                Position = request.Position.ToZeroBased()
+                var references = await LanguageServer.ReferencesAsync(new DocumentClientRequest
+                {
+                    Document = fileUri,
+                    Position = request.Position.ToZeroBased()
+                }, cancellationToken);
+
+                var locations = references.Select(x => x.ToSymbolLocation());
+                var enrichedLocations = await locations.EnrichWithTextAsync(cancellationToken);
+
+                return new FindReferencesSuccess
+                {
+                    Value = enrichedLocations
+                };
             }, cancellationToken);
 
-            var locations = references.Select(x => x.ToSymbolLocation());
-            var enrichedLocations = await locations.EnrichWithTextAsync(cancellationToken);
+            return result;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[FindReferences] Error occurred while processing find references request for {FilePath}:{Line}:{Character}",
+                request.FilePath, request.Position.Line, request.Position.Character);
 
-            return new FindReferencesResult
+            return new ApplicationServiceError
             {
-                Value = enrichedLocations
+                Message = "Failed to find references",
+                Exception = ex
             };
-        }, cancellationToken);
+        }
     }
 
-    public async Task<GoToResult> GoToDefinitionAsync(GoToRequest request,
+    public async Task<OneOf<GoToSuccess, ApplicationServiceError>> GoToDefinitionAsync(GoToRequest request,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
 
         _logger.LogInformation("[{Name}] {@Request}", nameof(GoToDefinitionAsync), request);
 
-        return await ExecuteWithFileLifecycleAsync(request.FilePath, async (fileUri) =>
+        try
         {
-            var definitions = await LanguageServer.DefinitionAsync(new DocumentClientRequest
+            var result = await ExecuteWithFileLifecycleAsync(request.FilePath, async (fileUri) =>
             {
-                Document = fileUri,
-                Position = request.Position.ToZeroBased()
+                var definitions = await LanguageServer.DefinitionAsync(new DocumentClientRequest
+                {
+                    Document = fileUri,
+                    Position = request.Position.ToZeroBased()
+                }, cancellationToken);
+
+                var locations = definitions.Select(x => x.ToSymbolLocation());
+                var enrichedLocations = await locations.EnrichWithTextAsync(cancellationToken);
+
+                return new GoToSuccess
+                {
+                    Locations = enrichedLocations
+                };
             }, cancellationToken);
 
-            var locations = definitions.Select(x => x.ToSymbolLocation());
-            var enrichedLocations = await locations.EnrichWithTextAsync(cancellationToken);
+            return result;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[GoToDefinition] Error occurred while processing go to definition request for {FilePath}:{Line}:{Character}",
+                request.FilePath, request.Position.Line, request.Position.Character);
 
-            return new GoToResult
+            return new ApplicationServiceError
             {
-                Locations = enrichedLocations
+                Message = "Failed to go to definition",
+                Exception = ex
             };
-        }, cancellationToken);
+        }
     }
 
-    public async Task<GoToResult> GoToTypeDefinitionAsync(GoToRequest request,
+    public async Task<OneOf<GoToSuccess, ApplicationServiceError>> GoToTypeDefinitionAsync(GoToRequest request,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
 
         _logger.LogInformation("[{Name}] {@Request}", nameof(GoToTypeDefinitionAsync), request);
 
-        return await ExecuteWithFileLifecycleAsync(request.FilePath, async (fileUri) =>
+        try
         {
-            var typeDefinitions = await LanguageServer.TypeDefinitionAsync(new DocumentClientRequest
+            var result = await ExecuteWithFileLifecycleAsync(request.FilePath, async (fileUri) =>
             {
-                Document = fileUri,
-                Position = request.Position.ToZeroBased()
+                var typeDefinitions = await LanguageServer.TypeDefinitionAsync(new DocumentClientRequest
+                {
+                    Document = fileUri,
+                    Position = request.Position.ToZeroBased()
+                }, cancellationToken);
+
+                var locations = typeDefinitions.Select(x => x.ToSymbolLocation());
+                var enrichedLocations = await locations.EnrichWithTextAsync(cancellationToken);
+
+                return new GoToSuccess
+                {
+                    Locations = enrichedLocations
+                };
             }, cancellationToken);
 
-            var locations = typeDefinitions.Select(x => x.ToSymbolLocation());
-            var enrichedLocations = await locations.EnrichWithTextAsync(cancellationToken);
+            return result;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[GoToTypeDefinition] Error occurred while processing go to type definition request for {FilePath}:{Line}:{Character}",
+                request.FilePath, request.Position.Line, request.Position.Character);
 
-            return new GoToResult
+            return new ApplicationServiceError
             {
-                Locations = enrichedLocations
+                Message = "Failed to go to type definition",
+                Exception = ex
             };
-        }, cancellationToken);
+        }
     }
 
-    public async Task<GoToResult> GoToImplementationAsync(GoToRequest request,
+    public async Task<OneOf<GoToSuccess, ApplicationServiceError>> GoToImplementationAsync(GoToRequest request,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
 
         _logger.LogInformation("[{Name}] {@Request}", nameof(GoToImplementationAsync), request);
 
-        return await ExecuteWithFileLifecycleAsync(request.FilePath, async (fileUri) =>
+        try
         {
-            var implementations = await LanguageServer.ImplementationAsync(new DocumentClientRequest
+            var result = await ExecuteWithFileLifecycleAsync(request.FilePath, async (fileUri) =>
             {
-                Document = fileUri,
-                Position = request.Position.ToZeroBased()
+                var implementations = await LanguageServer.ImplementationAsync(new DocumentClientRequest
+                {
+                    Document = fileUri,
+                    Position = request.Position.ToZeroBased()
+                }, cancellationToken);
+
+                var locations = implementations.Select(x => x.ToSymbolLocation());
+                var enrichedLocations = await locations.EnrichWithTextAsync(cancellationToken);
+
+                return new GoToSuccess
+                {
+                    Locations = enrichedLocations
+                };
             }, cancellationToken);
 
-            var locations = implementations.Select(x => x.ToSymbolLocation());
-            var enrichedLocations = await locations.EnrichWithTextAsync(cancellationToken);
+            return result;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[GoToImplementation] Error occurred while processing go to implementation request for {FilePath}:{Line}:{Character}",
+                request.FilePath, request.Position.Line, request.Position.Character);
 
-            return new GoToResult
+            return new ApplicationServiceError
             {
-                Locations = enrichedLocations
+                Message = "Failed to go to implementation",
+                Exception = ex
             };
-        }, cancellationToken);
+        }
     }
 
     private static string ExtractLanguageFromExt(string path) =>
@@ -293,7 +358,7 @@ public class ApplicationService : IApplicationService
             _ => "plaintext"
         };
 
-    public async Task<CompletionResult> CompletionAsync(CompletionRequest request,
+    public async Task<OneOf<CompletionSuccess, ApplicationServiceError>> CompletionAsync(CompletionRequest request,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
@@ -304,25 +369,41 @@ public class ApplicationService : IApplicationService
         _logger.LogTrace("[Process] Pid:{Pid} Exited:{HasExited}", _process?.Id,
             _process?.HasExited);
 
-        return await ExecuteWithFileLifecycleAsync(request.FilePath, async (fileUri) =>
+        try
         {
-            var completionList = await LanguageServer.CompletionAsync(new DocumentClientRequest
+            var result = await ExecuteWithFileLifecycleAsync(request.FilePath, async (fileUri) =>
             {
-                Document = fileUri,
-                Position = request.Position.ToZeroBased()
+                var completionList = await LanguageServer.CompletionAsync(new DocumentClientRequest
+                {
+                    Document = fileUri,
+                    Position = request.Position.ToZeroBased()
+                }, cancellationToken);
+
+                var count = completionList?.Items?.Length ?? 0;
+
+                return new CompletionSuccess
+                {
+                    Items = count > 0 ? completionList?.Items ?? [] : [],
+                    IsIncomplete = completionList?.IsIncomplete ?? false
+                };
             }, cancellationToken);
 
-            var count = completionList?.Items?.Length ?? 0;
+            return result;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[Completion] Error occurred while processing completion request for {FilePath}:{Line}:{Character}",
+                request.FilePath, request.Position.Line, request.Position.Character);
 
-            return new CompletionResult
+            return new ApplicationServiceError
             {
-                Items = count > 0 ? completionList?.Items ?? [] : [],
-                IsIncomplete = completionList?.IsIncomplete ?? false
+                Message = "Failed to get completion suggestions",
+                Exception = ex
             };
-        }, cancellationToken);
+        }
     }
 
-    public async Task<HoverResult> HoverAsync(HoverRequest request,
+    public async Task<OneOf<HoverSuccess, ApplicationServiceError>> HoverAsync(HoverRequest request,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
@@ -333,73 +414,101 @@ public class ApplicationService : IApplicationService
         _logger.LogTrace("[Process] Pid:{Pid} Exited:{HasExited}", _process?.Id,
             _process?.HasExited);
 
-        EnsureFileExists(request.FilePath, out var absoluteFileUri);
-
-        await OpenFileOnLspAsync(absoluteFileUri, cancellationToken);
-
-        var hover = await LanguageServer.HoverAsync(new DocumentClientRequest
+        try
         {
-            Document = absoluteFileUri,
-            Position = request.Position.ToZeroBased()
-        }, cancellationToken);
+            EnsureFileExists(request.FilePath, out var absoluteFileUri);
 
-        _logger.LogInformation("[Hover] Content:{Content}", hover?.Contents?.Value);
+            await OpenFileOnLspAsync(absoluteFileUri, cancellationToken);
 
-        await CloseFileOnLspAsync(absoluteFileUri, cancellationToken);
+            var hover = await LanguageServer.HoverAsync(new DocumentClientRequest
+            {
+                Document = absoluteFileUri,
+                Position = request.Position.ToZeroBased()
+            }, cancellationToken);
 
-        return new HoverResult
+            _logger.LogInformation("[Hover] Content:{Content}", hover?.Contents?.Value);
+
+            await CloseFileOnLspAsync(absoluteFileUri, cancellationToken);
+
+            return new HoverSuccess
+            {
+                Value = hover?.Contents?.Value ?? string.Empty
+            };
+        }
+        catch (Exception ex)
         {
-            Value = hover?.Contents?.Value ?? string.Empty
-        };
+            _logger.LogError(ex, "[Hover] Error occurred while processing hover request for {FilePath}:{Line}:{Character}",
+                request.FilePath, request.Position.Line, request.Position.Character);
+
+            return new ApplicationServiceError
+            {
+                Message = "Failed to get hover information",
+                Exception = ex
+            };
+        }
     }
 
-    public async Task<SearchSymbolResponse> SearchSymbolAsync(SearchSymbolRequest request,
+    public async Task<OneOf<SearchSymbolSuccess, ApplicationServiceError>> SearchSymbolAsync(SearchSymbolRequest request,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
 
-        var matchingSymbols = await LanguageServer.WorkspaceSymbolAsync(new WorkspaceSymbolParams
+        try
         {
-            Query = request.Query
-        }, cancellationToken);
-
-        var documentSymbols = matchingSymbols.Select(s => new DocumentSymbol
-        {
-            Name = s.Name ?? string.Empty,
-            Kind = s.Kind?.ToString() ?? "Unknown",
-            ContainerName = s.ContainerName,
-            Location = s.Location?.ToSymbolLocation()
-        })
-            .ToList();
-
-        // Extract locations, enrich them, and create a lookup
-        var locations = documentSymbols.Where(s => s.Location != null).Select(s => s.Location!);
-        var enrichedLocations = await locations.EnrichWithTextAsync(cancellationToken);
-        var enrichedLookup = enrichedLocations.ToLookup(loc =>
-            $"{loc.FilePath}:{loc.StartLine}:{loc.StartCharacter}:{loc.EndLine}:{loc.EndCharacter}");
-
-        // Update document symbols with enriched locations
-        var enrichedSymbols = documentSymbols.Select(symbol =>
-        {
-            if (symbol.Location == null) return symbol;
-
-            var key =
-                $"{symbol.Location.FilePath}:{symbol.Location.StartLine}:{symbol.Location.StartCharacter}:{symbol.Location.EndLine}:{symbol.Location.EndCharacter}";
-            var enrichedLocation = enrichedLookup[key].FirstOrDefault();
-
-            return symbol with
+            var matchingSymbols = await LanguageServer.WorkspaceSymbolAsync(new WorkspaceSymbolParams
             {
-                Location = enrichedLocation ?? symbol.Location
-            };
-        });
+                Query = request.Query
+            }, cancellationToken);
 
-        return new SearchSymbolResponse
+            var documentSymbols = matchingSymbols.Select(s => new DocumentSymbol
+            {
+                Name = s.Name ?? string.Empty,
+                Kind = s.Kind?.ToString() ?? "Unknown",
+                ContainerName = s.ContainerName,
+                Location = s.Location?.ToSymbolLocation()
+            })
+                .ToList();
+
+            // Extract locations, enrich them, and create a lookup
+            var locations = documentSymbols.Where(s => s.Location != null).Select(s => s.Location!);
+            var enrichedLocations = await locations.EnrichWithTextAsync(cancellationToken);
+            var enrichedLookup = enrichedLocations.ToLookup(loc =>
+                $"{loc.FilePath}:{loc.StartLine}:{loc.StartCharacter}:{loc.EndLine}:{loc.EndCharacter}");
+
+            // Update document symbols with enriched locations
+            var enrichedSymbols = documentSymbols.Select(symbol =>
+            {
+                if (symbol.Location == null) return symbol;
+
+                var key =
+                    $"{symbol.Location.FilePath}:{symbol.Location.StartLine}:{symbol.Location.StartCharacter}:{symbol.Location.EndLine}:{symbol.Location.EndCharacter}";
+                var enrichedLocation = enrichedLookup[key].FirstOrDefault();
+
+                return symbol with
+                {
+                    Location = enrichedLocation ?? symbol.Location
+                };
+            });
+
+            return new SearchSymbolSuccess
+            {
+                Value = enrichedSymbols
+            };
+        }
+        catch (Exception ex)
         {
-            Value = enrichedSymbols
-        };
+            _logger.LogError(ex, "[SearchSymbol] Error occurred while processing search symbol request for query: {Query}",
+                request.Query);
+
+            return new ApplicationServiceError
+            {
+                Message = "Failed to search symbols",
+                Exception = ex
+            };
+        }
     }
 
-    public async Task<WindowLog> GetWindowLogMessagesAsync(WindowLogRequest request,
+    public async Task<OneOf<WindowLog, ApplicationServiceError>> GetWindowLogMessagesAsync(WindowLogRequest request,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
@@ -409,26 +518,39 @@ public class ApplicationService : IApplicationService
         _logger.LogTrace("[Process] Pid:{Pid} Exited:{HasExited}", _process?.Id,
             _process?.HasExited);
 
-        await Task.CompletedTask;
-
-        var windowNotificationHandler = _lspNotificationHandlers.OfType<WindowNotificationHandler>()
-            .FirstOrDefault();
-
-        if (windowNotificationHandler == null)
+        try
         {
-            _logger.LogWarning("[GetWindowLogMessages] WindowNotificationHandler not found");
+            await Task.CompletedTask;
 
-            return new WindowLog([]);
+            var windowNotificationHandler = _lspNotificationHandlers.OfType<WindowNotificationHandler>()
+                .FirstOrDefault();
+
+            if (windowNotificationHandler == null)
+            {
+                _logger.LogWarning("[GetWindowLogMessages] WindowNotificationHandler not found");
+
+                return new WindowLog([]);
+            }
+
+            var logMessages = windowNotificationHandler.LogMessages
+                .Select(x => new WindowLogMessage(x.Message ?? string.Empty, x.MessageType))
+                .ToList();
+
+            _logger.LogInformation("[GetWindowLogMessages] Retrieved {Count} log messages",
+                logMessages.Count);
+
+            return new WindowLog(logMessages);
         }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[GetWindowLogMessages] Error occurred while retrieving window log messages");
 
-        var logMessages = windowNotificationHandler.LogMessages
-            .Select(x => new WindowLogMessage(x.Message ?? string.Empty, x.MessageType))
-            .ToList();
-
-        _logger.LogInformation("[GetWindowLogMessages] Retrieved {Count} log messages",
-            logMessages.Count);
-
-        return new WindowLog(logMessages);
+            return new ApplicationServiceError
+            {
+                Message = "Failed to get window log messages",
+                Exception = ex
+            };
+        }
     }
 
     // TODO: this has many concerns, to sort
@@ -497,228 +619,280 @@ public class ApplicationService : IApplicationService
         }
     }
 
-    public async Task<GetSymbolsResult> GetDocumentSymbolsAsync(GetSymbolsRequest request,
+    public async Task<OneOf<GetSymbolsSuccess, ApplicationServiceError>> GetDocumentSymbolsAsync(GetSymbolsRequest request,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
 
-        return await ExecuteWithFileLifecycleAsync(request.FilePath, async (fileUri) =>
+        try
         {
-            var documentSymbols = await LanguageServer.DocumentSymbolAsync(new DocumentSymbolParams
+            var result = await ExecuteWithFileLifecycleAsync(request.FilePath, async (fileUri) =>
             {
-                TextDocument = fileUri.ToDocumentIdentifier()
+                var documentSymbols = await LanguageServer.DocumentSymbolAsync(new DocumentSymbolParams
+                {
+                    TextDocument = fileUri.ToDocumentIdentifier()
+                }, cancellationToken);
+
+                var symbols = documentSymbols?.Select(x => new DocumentSymbol
+                {
+                    Name = x.Name,
+                    ContainerName = x.ContainerName,
+                    Kind = x.Kind.ToString(),
+                    Location = x.Location?.ToSymbolLocation()
+                })
+                    .ToList() ?? [];
+
+                // Extract locations, enrich them, and create a lookup
+                var locations = symbols.Where(s => s.Location != null).Select(s => s.Location!);
+                var enrichedLocations = await locations.EnrichWithTextAsync(cancellationToken);
+                var enrichedLookup = enrichedLocations.ToLookup(loc =>
+                    $"{loc.FilePath}:{loc.StartLine}:{loc.StartCharacter}:{loc.EndLine}:{loc.EndCharacter}");
+
+                // Update document symbols with enriched locations
+                var enrichedSymbols = symbols.Select(symbol =>
+                {
+                    if (symbol.Location == null) return symbol;
+
+                    var key =
+                        $"{symbol.Location.FilePath}:{symbol.Location.StartLine}:{symbol.Location.StartCharacter}:{symbol.Location.EndLine}:{symbol.Location.EndCharacter}";
+                    var enrichedLocation = enrichedLookup[key].FirstOrDefault();
+
+                    return symbol with
+                    {
+                        Location = enrichedLocation ?? symbol.Location
+                    };
+                });
+
+                return new GetSymbolsSuccess
+                {
+                    Symbols = enrichedSymbols
+                };
             }, cancellationToken);
 
-            var symbols = documentSymbols?.Select(x => new DocumentSymbol
+            return result;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[GetDocumentSymbols] Error occurred while processing get document symbols request for {FilePath}",
+                request.FilePath);
+
+            return new ApplicationServiceError
             {
-                Name = x.Name,
-                ContainerName = x.ContainerName,
-                Kind = x.Kind.ToString(),
-                Location = x.Location?.ToSymbolLocation()
-            })
-                .ToList() ?? [];
-
-            // Extract locations, enrich them, and create a lookup
-            var locations = symbols.Where(s => s.Location != null).Select(s => s.Location!);
-            var enrichedLocations = await locations.EnrichWithTextAsync(cancellationToken);
-            var enrichedLookup = enrichedLocations.ToLookup(loc =>
-                $"{loc.FilePath}:{loc.StartLine}:{loc.StartCharacter}:{loc.EndLine}:{loc.EndCharacter}");
-
-            // Update document symbols with enriched locations
-            var enrichedSymbols = symbols.Select(symbol =>
-            {
-                if (symbol.Location == null) return symbol;
-
-                var key =
-                    $"{symbol.Location.FilePath}:{symbol.Location.StartLine}:{symbol.Location.StartCharacter}:{symbol.Location.EndLine}:{symbol.Location.EndCharacter}";
-                var enrichedLocation = enrichedLookup[key].FirstOrDefault();
-
-                return symbol with
-                {
-                    Location = enrichedLocation ?? symbol.Location
-                };
-            });
-
-            return new GetSymbolsResult
-            {
-                Symbols = enrichedSymbols
+                Message = "Failed to get document symbols",
+                Exception = ex
             };
-        }, cancellationToken);
+        }
     }
 
-    public async Task<IEnumerable<DocumentDiagnostic>> GetDocumentDiagnosticsAsync(
+    public async Task<OneOf<IEnumerable<DocumentDiagnostic>, ApplicationServiceError>> GetDocumentDiagnosticsAsync(
         DocumentDiagnosticsRequest request, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
 
-        return await ExecuteWithFileLifecycleAsync(request.FilePath, async fileUri =>
+        _logger.LogInformation("[{Name}] {@Request}", nameof(GetDocumentDiagnosticsAsync), request);
+
+        try
         {
-            var clientCapabilityRegistrationHandler = _lspNotificationHandlers
-                .OfType<ClientCapabilityRegistrationHandler>()
-                .FirstOrDefault();
-
-            if (clientCapabilityRegistrationHandler == null)
+            var result = await ExecuteWithFileLifecycleAsync(request.FilePath, async fileUri =>
             {
-                _logger.LogWarning(
-                    "[GetDocumentDiagnosticsAsync] ClientCapabilityRegistrationHandler not found");
+                var clientCapabilityRegistrationHandler = _lspNotificationHandlers
+                    .OfType<ClientCapabilityRegistrationHandler>()
+                    .FirstOrDefault();
 
-                return [];
-            }
-
-            // Check if registrations are completed or if we have any registrations
-            if (!clientCapabilityRegistrationHandler.RegistrationCompleted.IsCompleted &&
-                !clientCapabilityRegistrationHandler.Registrations.Any())
-            {
-                _logger.LogWarning(
-                    "[GetDocumentDiagnosticsAsync] No diagnostic registrations available");
-
-                return [];
-            }
-
-            var diagnostics = new List<Diagnostic>();
-
-            // Get all diagnostic registrations
-            var registrations = clientCapabilityRegistrationHandler.Registrations.ToArray();
-            var textDocumentDiagnosticRegistrations = registrations
-                .Where(r => r.Method == "textDocument/diagnostic")
-                .ToArray();
-
-            foreach (var registration in textDocumentDiagnosticRegistrations)
-            {
-                var identifier = registration.RegisterOptions?.Identifier;
-
-                if (string.IsNullOrEmpty(identifier))
-                    continue;
-
-                _logger.LogDebug(
-                    "[GetDocumentDiagnosticsAsync] Fetching diagnostics for identifier: {Identifier}",
-                    identifier);
-
-                try
+                if (clientCapabilityRegistrationHandler == null)
                 {
-                    var response = await LanguageServer.DiagnosticAsync(
-                        new TextDocumentDiagnosticParams
-                        {
-                            TextDocument = fileUri.ToDocumentIdentifier(),
-                            Identifier = identifier
-                        }, cancellationToken);
+                    _logger.LogWarning(
+                        "[GetDocumentDiagnosticsAsync] ClientCapabilityRegistrationHandler not found");
 
-                    if (response?.Items != null) diagnostics.AddRange(response.Items);
+                    return [];
                 }
-                catch (Exception ex)
+
+                // Check if registrations are completed or if we have any registrations
+                if (!clientCapabilityRegistrationHandler.RegistrationCompleted.IsCompleted &&
+                    !clientCapabilityRegistrationHandler.Registrations.Any())
                 {
-                    _logger.LogWarning(ex,
-                        "[GetDocumentDiagnosticsAsync] Failed to fetch diagnostics for identifier: {Identifier}",
+                    _logger.LogWarning(
+                        "[GetDocumentDiagnosticsAsync] No diagnostic registrations available");
+
+                    return [];
+                }
+
+                var diagnostics = new List<Diagnostic>();
+
+                // Get all diagnostic registrations
+                var registrations = clientCapabilityRegistrationHandler.Registrations.ToArray();
+                var textDocumentDiagnosticRegistrations = registrations
+                    .Where(r => r.Method == "textDocument/diagnostic")
+                    .ToArray();
+
+                foreach (var registration in textDocumentDiagnosticRegistrations)
+                {
+                    var identifier = registration.RegisterOptions?.Identifier;
+
+                    if (string.IsNullOrEmpty(identifier))
+                        continue;
+
+                    _logger.LogDebug(
+                        "[GetDocumentDiagnosticsAsync] Fetching diagnostics for identifier: {Identifier}",
                         identifier);
+
+                    try
+                    {
+                        var response = await LanguageServer.DiagnosticAsync(
+                            new TextDocumentDiagnosticParams
+                            {
+                                TextDocument = fileUri.ToDocumentIdentifier(),
+                                Identifier = identifier
+                            }, cancellationToken);
+
+                        if (response?.Items != null) diagnostics.AddRange(response.Items);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex,
+                            "[GetDocumentDiagnosticsAsync] Failed to fetch diagnostics for identifier: {Identifier}",
+                            identifier);
+                    }
                 }
-            }
 
-            // Convert to our model format
-            var documentDiagnostics = new List<DocumentDiagnostic>();
+                // Convert to our model format
+                var documentDiagnostics = new List<DocumentDiagnostic>();
 
-            foreach (var diagnostic in diagnostics)
+                foreach (var diagnostic in diagnostics)
+                {
+                    if (diagnostic.Range?.Start == null || diagnostic.Range?.End == null)
+                        continue;
+
+                    var severity = diagnostic.Severity switch
+                    {
+                        DiagnosticSeverity.Error => "Error",
+                        DiagnosticSeverity.Warning => "Warning",
+                        DiagnosticSeverity.Information => "Information",
+                        DiagnosticSeverity.Hint => "Hint",
+                        _ => "Unknown"
+                    };
+
+                    documentDiagnostics.Add(new DocumentDiagnostic
+                    {
+                        Severity = severity,
+                        StartLine = (uint)diagnostic.Range.Start.Line,
+                        StartCharacter = (uint)diagnostic.Range.Start.Character,
+                        EndLine = (uint)diagnostic.Range.End.Line,
+                        EndCharacter = (uint)diagnostic.Range.End.Character,
+                        Message = diagnostic.Message ?? string.Empty,
+                        Code = diagnostic.Code,
+                        CodeDescription = diagnostic.CodeDescription?.Href
+                    });
+                }
+
+                // Enrich diagnostics with text content
+                var enrichedDiagnostics =
+                    await documentDiagnostics.EnrichWithTextAsync(request.FilePath, cancellationToken);
+
+                // Sort by severity (Error → Warning → Information → Hint) then by line number
+                return enrichedDiagnostics.OrderBy(d => d.SeverityOrder)
+                    .ThenBy(d => d.StartLine)
+                    .ThenBy(d => d.StartCharacter)
+                    .ToArray();
+            }, cancellationToken);
+
+            return result;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[GetDocumentDiagnosticsAsync] Error occurred while processing get document diagnostics request for {FilePath}",
+                request.FilePath);
+
+            return new ApplicationServiceError
             {
-                if (diagnostic.Range?.Start == null || diagnostic.Range?.End == null)
-                    continue;
-
-                var severity = diagnostic.Severity switch
-                {
-                    DiagnosticSeverity.Error => "Error",
-                    DiagnosticSeverity.Warning => "Warning",
-                    DiagnosticSeverity.Information => "Information",
-                    DiagnosticSeverity.Hint => "Hint",
-                    _ => "Unknown"
-                };
-
-                documentDiagnostics.Add(new DocumentDiagnostic
-                {
-                    Severity = severity,
-                    StartLine = (uint)diagnostic.Range.Start.Line,
-                    StartCharacter = (uint)diagnostic.Range.Start.Character,
-                    EndLine = (uint)diagnostic.Range.End.Line,
-                    EndCharacter = (uint)diagnostic.Range.End.Character,
-                    Message = diagnostic.Message ?? string.Empty,
-                    Code = diagnostic.Code,
-                    CodeDescription = diagnostic.CodeDescription?.Href
-                });
-            }
-
-            // Enrich diagnostics with text content
-            var enrichedDiagnostics =
-                await documentDiagnostics.EnrichWithTextAsync(request.FilePath, cancellationToken);
-
-            // Sort by severity (Error → Warning → Information → Hint) then by line number
-            return enrichedDiagnostics.OrderBy(d => d.SeverityOrder)
-                .ThenBy(d => d.StartLine)
-                .ThenBy(d => d.StartCharacter)
-                .ToArray();
-        }, cancellationToken);
+                Message = "Failed to get document diagnostics",
+                Exception = ex
+            };
+        }
     }
 
-    public async Task<RenameSymbolResult> RenameSymbolAsync(RenameSymbolRequest request,
+    public async Task<OneOf<RenameSymbolSuccess, ApplicationServiceError>> RenameSymbolAsync(RenameSymbolRequest request,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
 
-        return await ExecuteWithFileLifecycleAsync(request.FilePath, async (fileUri) =>
+        _logger.LogInformation("[{Name}] {@Request}", nameof(RenameSymbolAsync), request);
+
+        try
         {
-            var workspaceEdit = await LanguageServer.RenameAsync(new RenameParams
+            var result = await ExecuteWithFileLifecycleAsync(request.FilePath, async (fileUri) =>
             {
-                TextDocument = fileUri.ToDocumentIdentifier(),
-                Position = request.Position.ToZeroBased(),
-                NewName = request.NewName
+                var workspaceEdit = await LanguageServer.RenameAsync(new RenameParams
+                {
+                    TextDocument = fileUri.ToDocumentIdentifier(),
+                    Position = request.Position.ToZeroBased(),
+                    NewName = request.NewName
+                }, cancellationToken);
+
+                if (workspaceEdit == null)
+                {
+                    _logger.LogWarning("LSP returned null workspace edit for rename operation");
+
+                    return new RenameSymbolSuccess
+                    {
+                        Success = false,
+                        Errors = ["LSP returned no changes for rename operation"],
+                        ChangedFiles = [],
+                        TotalEditsApplied = 0,
+                        TotalFilesChanged = 0,
+                        TotalLinesChanged = 0
+                    };
+                }
+
+                // TODO: Inject from DI
+                var applicator =
+                    new WorkspaceEditApplicator(_loggerFactory.CreateLogger<WorkspaceEditApplicator>());
+                var applicatorResult = await applicator.ApplyAsync(workspaceEdit, cancellationToken);
+
+                if (applicatorResult.HasErrors)
+                {
+                    _logger.LogError("Failed to apply rename changes: {Errors}",
+                        string.Join(", ", applicatorResult.Errors));
+
+                    return new RenameSymbolSuccess
+                    {
+                        Success = false,
+                        Errors = applicatorResult.Errors,
+                        ChangedFiles = [],
+                        TotalEditsApplied = 0,
+                        TotalFilesChanged = 0,
+                        TotalLinesChanged = 0
+                    };
+                }
+
+                _logger.LogInformation(
+                    "Successfully renamed symbol: {TotalFilesChanged} files, {TotalEditsApplied} edits, {TotalLinesChanged} lines",
+                    applicatorResult.TotalFilesChanged, applicatorResult.TotalEditsApplied, applicatorResult.TotalLinesChanged);
+
+                return new RenameSymbolSuccess
+                {
+                    Success = true,
+                    Errors = [],
+                    ChangedFiles = applicatorResult.FilesChanged.Select(r => r.FilePath),
+                    TotalFilesChanged = applicatorResult.TotalFilesChanged,
+                    TotalEditsApplied = applicatorResult.TotalEditsApplied,
+                    TotalLinesChanged = applicatorResult.TotalLinesChanged
+                };
             }, cancellationToken);
 
-            if (workspaceEdit == null)
+            return result;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[RenameSymbol] Error occurred while processing rename symbol request for {FilePath}:{Line}:{Character} -> {NewName}",
+                request.FilePath, request.Position.Line, request.Position.Character, request.NewName);
+
+            return new ApplicationServiceError
             {
-                _logger.LogWarning("LSP returned null workspace edit for rename operation");
-
-                return new RenameSymbolResult
-                {
-                    Success = false,
-                    Errors = ["LSP returned no changes for rename operation"],
-                    ChangedFiles = [],
-                    TotalEditsApplied = 0,
-                    TotalFilesChanged = 0,
-                    TotalLinesChanged = 0
-                };
-            }
-
-            // TODO: Inject from DI
-            var applicator =
-                new WorkspaceEditApplicator(_loggerFactory.CreateLogger<WorkspaceEditApplicator>());
-            var result = await applicator.ApplyAsync(workspaceEdit, cancellationToken);
-
-            if (result.HasErrors)
-            {
-                _logger.LogError("Failed to apply rename changes: {Errors}",
-                    string.Join(", ", result.Errors));
-
-                return new RenameSymbolResult
-                {
-                    Success = false,
-                    Errors = result.Errors,
-                    ChangedFiles = [],
-                    TotalEditsApplied = 0,
-                    TotalFilesChanged = 0,
-                    TotalLinesChanged = 0
-                };
-            }
-
-            _logger.LogInformation(
-                "Successfully renamed symbol: {TotalFilesChanged} files, {TotalEditsApplied} edits, {TotalLinesChanged} lines",
-                result.TotalFilesChanged, result.TotalEditsApplied, result.TotalLinesChanged);
-
-            return new RenameSymbolResult
-            {
-                Success = true,
-                Errors = [],
-                ChangedFiles = result.FilesChanged.Select(r => r.FilePath),
-                TotalFilesChanged = result.TotalFilesChanged,
-                TotalEditsApplied = result.TotalEditsApplied,
-                TotalLinesChanged = result.TotalLinesChanged
+                Message = "Failed to rename symbol",
+                Exception = ex
             };
-        }, cancellationToken);
+        }
     }
 
     public async Task ShutdownAsync(CancellationToken cancellationToken = default)
