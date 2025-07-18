@@ -3,6 +3,7 @@ using LspUse.Application;
 using LspUse.Application.Models;
 using Microsoft.Extensions.Logging;
 using ModelContextProtocol.Server;
+using OneOf;
 
 namespace LspUse.McpServer.Tools;
 
@@ -22,7 +23,7 @@ public static class RenameSymbolTool
 
     [McpServerTool(Name = ToolName, Title = ToolTitle, UseStructuredContent = true)]
     [Description(ToolDescription)]
-    public static async Task<RenameSymbolResult> RenameSymbolAsync(
+    public static async Task<RenameSymbolSuccess> RenameSymbolAsync(
         IApplicationService applicationService, ILoggerFactory loggerFactory,
         [Description(ToolArgDescFilePath)] string filePath,
         [Description(ToolArgDescLine)] uint line,
@@ -35,26 +36,35 @@ public static class RenameSymbolTool
         logger.LogInformation("Renaming symbol at {FilePath}:{Line}:{Character} to '{NewName}'",
             filePath, line, character, newName);
 
-        try
+        var request = new RenameSymbolRequest
         {
-            var request = new RenameSymbolRequest
+            FilePath = filePath,
+            Position = new EditorPosition
             {
-                FilePath = filePath,
-                Position = new EditorPosition
+                Line = line,
+                Character = character
+            },
+            NewName = newName
+        };
+
+        var result = await applicationService.RenameSymbolAsync(request, cancellationToken);
+
+        return result.Match(
+            success =>
+            {
+                logger.LogInformation("Symbol rename completed successfully. Changed {FileCount} files with {TotalEdits} edits", 
+                    success.ChangedFiles.Count(), success.TotalEditsApplied);
+                return success;
+            },
+            error =>
+            {
+                logger.LogError("Symbol rename error: {Message} ({ErrorCode})", error.Message, error.ErrorCode);
+                if (error.Exception != null)
                 {
-                    Line = line,
-                    Character = character
-                },
-                NewName = newName
-            };
-
-            return await applicationService.RenameSymbolAsync(request, cancellationToken);
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Error during symbol rename operation");
-
-            throw;
-        }
+                    logger.LogError(error.Exception, "Underlying exception for symbol rename error");
+                }
+                throw new InvalidOperationException($"Symbol rename operation failed: {error.Message}", error.Exception);
+            }
+        );
     }
 }

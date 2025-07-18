@@ -3,6 +3,7 @@ using LspUse.Application;
 using LspUse.Application.Models;
 using Microsoft.Extensions.Logging;
 using ModelContextProtocol.Server;
+using OneOf;
 
 namespace LspUse.McpServer.Tools;
 
@@ -35,27 +36,31 @@ public static class GoToDefinitionTool
 
         logger.LogInformation("{File} at {Line}:{Character}", file, line, character);
 
-        try
+        var result = await service.GoToDefinitionAsync(new GoToRequest
         {
-            var result = await service.GoToDefinitionAsync(new GoToRequest
+            FilePath = file,
+            Position = new EditorPosition
             {
-                FilePath = file,
-                Position = new EditorPosition
+                Line = line,
+                Character = character
+            }
+        }, cancellationToken);
+
+        return result.Match<IEnumerable<SymbolLocation>>(
+            success =>
+            {
+                logger.LogInformation("MCP GoToDefinitionTool returning {Count} locations", success.Locations.Count());
+                return success.Locations;
+            },
+            error =>
+            {
+                logger.LogError("MCP GoToDefinitionTool error: {Message} ({ErrorCode})", error.Message, error.ErrorCode);
+                if (error.Exception != null)
                 {
-                    Line = line,
-                    Character = character
+                    logger.LogError(error.Exception, "Underlying exception for go to definition error");
                 }
-            }, cancellationToken);
-
-            return result.Locations;
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex,
-                "Error in MCP GoToDefinitionTool for {FilePath} at {Line}:{Character}", file, line,
-                character);
-
-            throw;
-        }
+                throw new InvalidOperationException($"Go to definition operation failed: {error.Message}", error.Exception);
+            }
+        );
     }
 }

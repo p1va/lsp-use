@@ -3,6 +3,7 @@ using LspUse.Application;
 using LspUse.Application.Models;
 using Microsoft.Extensions.Logging;
 using ModelContextProtocol.Server;
+using OneOf;
 
 namespace LspUse.McpServer.Tools;
 
@@ -25,29 +26,32 @@ public static class HoverTool
         logger.LogInformation("MCP HoverTool called for {FilePath} at {Line}:{Character}", file,
             line, character);
 
-        try
+        var result = await service.HoverAsync(new HoverRequest
         {
-            var result = await service.HoverAsync(new HoverRequest
+            FilePath = file,
+            Position = new EditorPosition
             {
-                FilePath = file,
-                Position = new EditorPosition
+                Line = line,
+                Character = character
+            }
+        }, cancellationToken);
+
+        return result.Match<object?>(
+            success =>
+            {
+                logger.LogInformation("MCP HoverTool returning hover content: {HasContent}",
+                    success.Value != null);
+                return success.Value;
+            },
+            error =>
+            {
+                logger.LogError("MCP HoverTool error: {Message} ({ErrorCode})", error.Message, error.ErrorCode);
+                if (error.Exception != null)
                 {
-                    Line = line,
-                    Character = character
+                    logger.LogError(error.Exception, "Underlying exception for hover error");
                 }
-            }, cancellationToken);
-
-            logger.LogInformation("MCP HoverTool returning hover content: {HasContent}",
-                result.Value != null);
-
-            return result.Value;
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Error in MCP HoverTool for {FilePath} at {Line}:{Character}", file,
-                line, character);
-
-            throw;
-        }
+                throw new InvalidOperationException($"Hover operation failed: {error.Message}", error.Exception);
+            }
+        );
     }
 }

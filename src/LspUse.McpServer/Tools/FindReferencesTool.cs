@@ -3,6 +3,7 @@ using LspUse.Application;
 using LspUse.Application.Models;
 using Microsoft.Extensions.Logging;
 using ModelContextProtocol.Server;
+using OneOf;
 
 namespace LspUse.McpServer.Tools;
 
@@ -36,31 +37,33 @@ public static class FindReferencesTool
         logger.LogInformation("MCP FindReferencesTool called for {FilePath} at {Line}:{Character}",
             file, line, character);
 
-        try
+        var result = await service.FindReferencesAsync(new FindReferencesRequest
         {
-            var result = await service.FindReferencesAsync(new FindReferencesRequest
+            FilePath = file,
+            Position = new EditorPosition
             {
-                FilePath = file,
-                Position = new EditorPosition
+                Line = line,
+                Character = character
+            },
+            IncludeDeclaration = true
+        }, cancellationToken);
+
+        return result.Match<IEnumerable<SymbolLocation>>(
+            success =>
+            {
+                logger.LogInformation("MCP FindReferencesTool returning {Count} references",
+                    success.Value.Count());
+                return success.Value;
+            },
+            error =>
+            {
+                logger.LogError("MCP FindReferencesTool error: {Message} ({ErrorCode})", error.Message, error.ErrorCode);
+                if (error.Exception != null)
                 {
-                    Line = line,
-                    Character = character
-                },
-                IncludeDeclaration = true
-            }, cancellationToken);
-
-            logger.LogInformation("MCP FindReferencesTool returning {Count} references",
-                result.Value.Count());
-
-            return result.Value;
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex,
-                "Error in MCP FindReferencesTool for {FilePath} at {Line}:{Character}", file, line,
-                character);
-
-            throw;
-        }
+                    logger.LogError(error.Exception, "Underlying exception for find references error");
+                }
+                throw new InvalidOperationException($"Find references operation failed: {error.Message}", error.Exception);
+            }
+        );
     }
 }

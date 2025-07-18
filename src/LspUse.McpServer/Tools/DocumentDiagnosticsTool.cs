@@ -3,6 +3,7 @@ using LspUse.Application;
 using LspUse.Application.Models;
 using Microsoft.Extensions.Logging;
 using ModelContextProtocol.Server;
+using OneOf;
 
 namespace LspUse.McpServer.Tools;
 
@@ -28,7 +29,10 @@ public static class DocumentDiagnosticsTool
                 FilePath = file
             }, cancellationToken);
 
-            return result;
+            return result.Match(
+                success => success,
+                error => throw new InvalidOperationException($"Error getting document diagnostics: {error.Message}", error.Exception)
+            );
         }
         catch (Exception ex)
         {

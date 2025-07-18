@@ -3,6 +3,7 @@ using LspUse.Application;
 using LspUse.Application.Models;
 using Microsoft.Extensions.Logging;
 using ModelContextProtocol.Server;
+using OneOf;
 
 namespace LspUse.McpServer.Tools;
 
@@ -25,49 +26,53 @@ public static class CompletionTool
         logger.LogInformation("MCP CompletionTool called for {FilePath} at {Line}:{Character}",
             file, line, character);
 
-        try
+        var result = await service.CompletionAsync(new CompletionRequest
         {
-            var result = await service.CompletionAsync(new CompletionRequest
+            FilePath = file,
+            Position = new EditorPosition
             {
-                FilePath = file,
-                Position = new EditorPosition
-                {
-                    Line = line,
-                    Character = character
-                }
-            }, cancellationToken);
+                Line = line,
+                Character = character
+            }
+        }, cancellationToken);
 
-            logger.LogInformation("MCP CompletionTool returning {Count} completion items",
-                result.Items.Count());
-
-            return new
+        return result.Match(
+            success =>
             {
-                Items = result.Items.Select(item => new
+                logger.LogInformation("MCP CompletionTool returning {Count} completion items",
+                    success.Items.Count());
+
+                return new
                 {
-                    item.Label,
-                    Kind = item.Kind?.ToString(),
-                    KindValue = (int?)item.Kind
-                })
-                    .ToArray(),
-                Metadata = new
-                {
-                    result.IsIncomplete,
-                    ItemCount = result.Items.Count(),
-                    Position = new
+                    Items = success.Items.Select(item => new
                     {
-                        Line = line,
-                        Character = character
-                    },
-                    File = file
+                        item.Label,
+                        Kind = item.Kind?.ToString(),
+                        KindValue = (int?)item.Kind
+                    })
+                        .ToArray(),
+                    Metadata = new
+                    {
+                        success.IsIncomplete,
+                        ItemCount = success.Items.Count(),
+                        Position = new
+                        {
+                            Line = line,
+                            Character = character
+                        },
+                        File = file
+                    }
+                };
+            },
+            error =>
+            {
+                logger.LogError("MCP CompletionTool error: {Message} ({ErrorCode})", error.Message, error.ErrorCode);
+                if (error.Exception != null)
+                {
+                    logger.LogError(error.Exception, "Underlying exception for completion error");
                 }
-            };
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Error in MCP CompletionTool for {FilePath} at {Line}:{Character}",
-                file, line, character);
-
-            throw;
-        }
+                throw new InvalidOperationException($"Completion operation failed: {error.Message}", error.Exception);
+            }
+        );
     }
 }

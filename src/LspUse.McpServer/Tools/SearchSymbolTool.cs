@@ -3,6 +3,7 @@ using LspUse.Application;
 using LspUse.Application.Models;
 using Microsoft.Extensions.Logging;
 using ModelContextProtocol.Server;
+using OneOf;
 
 namespace LspUse.McpServer.Tools;
 
@@ -28,24 +29,27 @@ public static class SearchSymbolTool
 
         logger.LogInformation("MCP SearchSymbolsTool called with query: {Query}", query);
 
-        try
+        var result = await service.SearchSymbolAsync(new SearchSymbolRequest
         {
-            var result = await service.SearchSymbolAsync(new SearchSymbolRequest
+            Query = query
+        }, cancellationToken);
+
+        return result.Match<IEnumerable<DocumentSymbol>>(
+            success =>
             {
-                Query = query
-            }, cancellationToken);
-
-            var symbolList = result.Value.ToList();
-            logger.LogInformation("MCP SearchSymbolsTool returning {Count} symbols",
-                symbolList.Count);
-
-            return result.Value;
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Error in MCP SearchSymbolsTool for query: {Query}", query);
-
-            throw;
-        }
+                var symbolList = success.Value.ToList();
+                logger.LogInformation("MCP SearchSymbolsTool returning {Count} symbols", symbolList.Count);
+                return success.Value;
+            },
+            error =>
+            {
+                logger.LogError("MCP SearchSymbolsTool error: {Message} ({ErrorCode})", error.Message, error.ErrorCode);
+                if (error.Exception != null)
+                {
+                    logger.LogError(error.Exception, "Underlying exception for search symbols error");
+                }
+                throw new InvalidOperationException($"Search symbols operation failed: {error.Message}", error.Exception);
+            }
+        );
     }
 }

@@ -3,6 +3,7 @@ using LspUse.Application;
 using LspUse.Application.Models;
 using Microsoft.Extensions.Logging;
 using ModelContextProtocol.Server;
+using OneOf;
 
 namespace LspUse.McpServer.Tools;
 
@@ -35,26 +36,31 @@ public static class GoToTypeDefinitionTool
 
         logger.LogInformation("{File} at {Line}:{Character}", file, line, character);
 
-        try
+        var result = await service.GoToTypeDefinitionAsync(new GoToRequest
         {
-            var result = await service.GoToTypeDefinitionAsync(new GoToRequest
+            FilePath = file,
+            Position = new EditorPosition
             {
-                FilePath = file,
-                Position = new EditorPosition
+                Line = line,
+                Character = character
+            }
+        }, cancellationToken);
+
+        return result.Match<IEnumerable<SymbolLocation>>(
+            success =>
+            {
+                logger.LogInformation("MCP GoToTypeDefinitionTool returning {Count} locations", success.Locations.Count());
+                return success.Locations;
+            },
+            error =>
+            {
+                logger.LogError("MCP GoToTypeDefinitionTool error: {Message} ({ErrorCode})", error.Message, error.ErrorCode);
+                if (error.Exception != null)
                 {
-                    Line = line,
-                    Character = character
+                    logger.LogError(error.Exception, "Underlying exception for go to type definition error");
                 }
-            }, cancellationToken);
-
-            return result.Locations;
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Error for {FilePath} at {Line}:{Character}", file, line,
-                character);
-
-            throw;
-        }
+                throw new InvalidOperationException($"Go to type definition operation failed: {error.Message}", error.Exception);
+            }
+        );
     }
 }

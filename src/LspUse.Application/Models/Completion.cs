@@ -8,7 +8,7 @@ public record CompletionRequest
     public required EditorPosition Position { get; init; }
 }
 
-public record CompletionResult
+public record CompletionSuccess
 {
     // TODO: Refactor this as is coming from the client layer
     public required IEnumerable<CompletionItem> Items { get; init; }
