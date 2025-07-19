@@ -159,6 +159,11 @@ When making changes to the codebase:
 4. Restart Claude Code session to access the latest build
 5. Test the changes using the MCP tools directly
 
+### Development Setup
+- **LSP Server**: Downloaded via justfile, located in `/tmp/lsp-use/roslyn/`
+- **Test Sources**: Accessed via `TestResource` class for portable path resolution
+- **Build artifacts**: Standard .NET build output locations
+
 ### Code Style Guidelines
 
 - Use records for DTOs and models
@@ -194,61 +199,9 @@ When making changes to the codebase:
 
 ## External Resources
 
-### LSP Specification
-- **Official LSP Spec**: https://microsoft.github.io/language-server-protocol/
+- **LSP Specification**: https://microsoft.github.io/language-server-protocol/
 - **Roslyn LSP Implementation**: Microsoft.CodeAnalysis.LanguageServer
-- **Key LSP Methods**: Documented in the codebase under `/src/LspUse.LanguageServerClient/`
-
-### .NET Documentation
-- **Local docs**: Available at `.external/dotnet-docs`
-- **Framework APIs**: Accessible via LSP type definitions and MAS files
-- **Roslyn APIs**: Available through LSP server integration
-
-### Development Setup
-- **LSP Server**: Downloaded via justfile, located in `/tmp/lsp-use/roslyn/`
-- **Test Sources**: Accessed via `TestResource` class for portable path resolution
-- **Build artifacts**: Standard .NET build output locations
 
 ### TestResource Class
 
-The `TestResource` class provides strongly-typed access to test files and source files with automatic path resolution. It's designed to make tests portable across different environments by dynamically finding the repository root.
-
-**Key Features:**
-- **Automatic repository detection**: Uses `[CallerFilePath]` attribute to find .git directory or solution files
-- **Strongly-typed properties**: Each test file and commonly used source file has a dedicated property
-- **Cross-platform compatibility**: Uses `Path.Combine()` for proper path construction
-- **Extensible design**: Easy to add new test resources or source files
-
-**Usage Examples:**
-```csharp
-// Test resource files (returns Uri objects)
-var testFileUri = TestResource.DiagnosticsErrorTest;
-var jsonRpcUri = TestResource.JsonRpcTest;
-
-// Source files (returns Uri objects)
-var appServiceUri = TestResource.ApplicationService;
-var findRefsUri = TestResource.FindReferencesResult;
-
-// Repository paths (returns string paths)
-var repoRoot = TestResource.RepositoryRoot;
-var solutionFile = TestResource.SolutionFile;
-
-// File paths for I/O operations (returns string paths)
-var testFilePath = TestResource.Paths.DiagnosticsErrorTest;
-var appServicePath = TestResource.Paths.ApplicationService;
-```
-
-**Available Properties:**
-- **URI Properties**: `DiagnosticsErrorTest`, `JsonRpcTest`, `SystemConsoleTest`, `ApplicationService`, `FindReferencesResult`, `FileLoggerProvider`, `FindReferencesTool`, `IApplicationService`
-- **Path Properties**: `RepositoryRoot`, `SolutionFile`
-- **String Paths**: `TestResource.Paths.*` (mirrors all URI properties as string paths for file I/O)
-
-## Future Enhancements
-
-The architecture supports easy extension for:
-- Additional LSP methods (code actions, formatting, etc.)
-- Multi-language support (currently C#-focused)
-- Advanced refactoring operations
-- Real-time diagnostics streaming
-- Workspace-wide operations
-- Custom Roslyn analyzers integration
+The `TestResource` class provides strongly-typed access to test files and source files with automatic path resolution for portable tests across environments.
