@@ -1,0 +1,14 @@
+{
+   "servers": {
+     "csharp": {
+       "type": "stdio",
+       "command": "lsp-use",
+       "args": [
+         "--sln",
+         "${workspaceFolder}/lsp-use.sln",
+         "--workspace",
+         "${workspaceFolder}",
+       ]
+     }
+   }
+ }

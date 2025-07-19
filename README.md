@@ -122,7 +122,7 @@ Update your `.mcp.json` file with a `csharp` where the path and sln files match 
         "--workspace",
         ".",
         "--sln",
-        "your-solution.sln"
+        "solution.sln"
       ]
     }
   }
@@ -143,6 +143,27 @@ args = ["--workspace=/path/to/repo", "--sln=/path/to/repo/solution.sln"]
 ```
 
 Update your `AGENTS.md` with instructions on tool use like [here](AGENTS.md).
+
+### Copilot in VS Code
+
+Add or update your `.vscode/mcp.toml` to include this `csharp` server and provide your own solution file name
+
+```json
+{
+   "servers": {
+     "csharp": {
+       "type": "stdio",
+       "command": "lsp-use",
+       "args": [
+         "--sln",
+         "${workspaceFolder}/solution.sln",
+         "--workspace",
+         "${workspaceFolder}",
+       ]
+     }
+   }
+ }
+ ```
 
 ## Available Tools
 
