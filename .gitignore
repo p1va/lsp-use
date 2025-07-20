@@ -86,3 +86,7 @@ docs/api
 .external
 
 src/LspUse.McpServer/lsp/
+
+# This gets generated in CI
+src/LspUse.McpServer/.mcp/server.json
+src/LspUse.McpServer/nupkg/*

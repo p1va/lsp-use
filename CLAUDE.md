@@ -49,6 +49,7 @@ EOF
   - Use `mcp__csharp__go_to_type_definition` to retreive the location of where the symbol's type is declared
   - Use `mcp__csharp__go_to_implementation` to retrieve the locations of implementations of a given symbol e.g. all symbols implementing an interface
 - When unsure which symbols (e.g. Properties, Methods) are available use a combination of Code Navigation tools to reach the definition e.g `mcp__csharp__go_to_definition` and then parse its symbols via `mcp__csharp__get_symbols` to retrieve available Methods, Properties, etc
+- Use `mcp__microsoft-docs__microsoft_docs_search` for researching Microsoft/Azure documentation when working with MSBuild, NuGet packaging, .NET SDK features, or other Microsoft technologies. This tool provides authoritative answers from official documentation and can save significant time when troubleshooting build issues or implementing advanced MSBuild scenarios.
 
 ### Available MCP Tools
 

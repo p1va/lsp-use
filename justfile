@@ -74,16 +74,17 @@ roslyn-run-named-pipes pipe-name:
 # Installs `lsp-use` from source
 [group('tool')]
 install:
+  just clean-nupkg
   just pack
   dotnet tool install \
     --global \
-    --add-source ./src/LspUse.McpServer/nupkg \
+    --source ./src/LspUse.McpServer/nupkg \
     {{tool_package_id}}.{{roslyn_platform}}
 
 # Uninstalls `lsp-use`
 [group('tool')]
 remove:
-  dotnet tool uninstall -g {{tool_package_id}}.{{roslyn_platform}}
+  dotnet tool uninstall -g {{tool_package_id}}.{{roslyn_platform}} || true
 
 [group('tool')]
 reinstall:
@@ -103,7 +104,7 @@ list-nupkg:
 clean-nupkg:
   @echo "Removing local *.nupkg"
   just list-nupkg
-  rm src/LspUse.McpServer/nupkg/*
+  rm -drf src/LspUse.McpServer/nupkg/*
 
 [group('release')]
 pack:

@@ -1,46 +1,92 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-    <PropertyGroup>
-        <OutputType>Exe</OutputType>
-        <PackAsTool>true</PackAsTool>
-        <ToolCommandName>lsp-use</ToolCommandName>
-        <PackageOutputPath>./nupkg</PackageOutputPath>
-        <!-- PackageId becomes e.g. LspUse.Csharp.linux-x64 when we pass
-             -p:PackageBaseId=LspUse.Csharp -p:RuntimeIdentifier=linux-x64 on CI. -->
-        <PackageBaseId Condition="'$(PackageBaseId)'==''">LspUse.Csharp</PackageBaseId>
-        <PackageId>$(PackageBaseId).$(RuntimeIdentifier)</PackageId>
-    </PropertyGroup>
+  <PropertyGroup>
+    <!-- Dotnet tool -->
+    <OutputType>Exe</OutputType>
+    <PackAsTool>true</PackAsTool>
+    <ToolCommandName>lsp-use</ToolCommandName>
 
-    <!-- Ship the LSP payload under an `lsp/` folder inside the nupkg. -->
-    <ItemGroup>
-        <Content Include="lsp\**\*">
-          <Pack>true</Pack>
-          <PackagePath>tools\$(TargetFramework)\any\lsp</PackagePath>
-          <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-        </Content>
-    </ItemGroup>
-    
+    <!-- For nuget discovery -->
+    <PackageType>McpServer</PackageType>
+    <PackageTags>AI; MCP; server; stdio</PackageTags>
+    <Description>An MCP server to bring the C# Language Server to LLMs.</Description>
+
+    <PackageOutputPath>./nupkg</PackageOutputPath>
+    <!-- or ../.. -->
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+
+    <!-- PackageId becomes LspUse.Csharp.linux-x64 in CI -->
+    <PackageBaseId Condition="'$(PackageBaseId)'==''">LspUse.Csharp</PackageBaseId>
+    <PackageId>$(PackageBaseId).$(RuntimeIdentifier)</PackageId>
+    <PackageVersion>$(PackageVersion)</PackageVersion>
+
     <!-- Suppress NuGet warnings for LSP assemblies that are not references -->
+    <NoWarn>$(NoWarn);NU5100;NU5118</NoWarn>
+
+  </PropertyGroup>
+
+  <!-- Project references -->
+  <ItemGroup>
+    <ProjectReference Include="..\LspUse.Application\LspUse.Application.csproj"/>
+  </ItemGroup>
+
+  <!-- Dependencies -->
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="10.0.0-preview.6.25358.103"/>
+    <PackageReference Include="OneOf" Version="3.0.271"/>
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.0-preview.6.25358.103"/>
+    <PackageReference Include="ModelContextProtocol" Version="0.3.0-preview.3"/>
+  </ItemGroup>
+
+  <!-- Embedded LSP binaries inside nupkg -->
+  <ItemGroup>
+    <Content Include="lsp\**\*">
+      <Pack>true</Pack>
+      <PackagePath>tools\$(TargetFramework)\any\lsp</PackagePath>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+  <!-- Extension point to include generated content in package -->
+  <PropertyGroup>
+    <TargetsForTfmSpecificContentInPackage>$(TargetsForTfmSpecificContentInPackage);IncludeGeneratedJsonInPackage</TargetsForTfmSpecificContentInPackage>
+  </PropertyGroup>
+
+  <!-- Generate the MCP server JSON file -->
+  <Target Name="GenerateMcpServerJson" BeforeTargets="IncludeGeneratedJsonInPackage">
+    <Message Text="PackageId: $(PackageId)" Importance="high"/>
+    <Message Text="PackageVersion: $(PackageVersion)" Importance="high"/>
+    
     <PropertyGroup>
-        <NoWarn>$(NoWarn);NU5100;NU5118</NoWarn>
+      <JsonTemplateFile>$(MSBuildProjectDirectory)/.mcp/server.json.template</JsonTemplateFile>
+      <JsonOutputFile>$(MSBuildProjectDirectory)/.mcp/server.json</JsonOutputFile>
+      <JsonContent>$([System.IO.File]::ReadAllText($(JsonTemplateFile)))</JsonContent>
+      <JsonContent>$(JsonContent.Replace('{{PackageId}}', $(PackageId)))</JsonContent>
+      <JsonContent>$(JsonContent.Replace('{{PackageVersion}}', $(PackageVersion)))</JsonContent>
     </PropertyGroup>
+    
+    <WriteLinesToFile
+      File="$(JsonOutputFile)"
+      Lines="$(JsonContent)"
+      Overwrite="true"/>
+  </Target>
 
+  <!-- Include the generated JSON file in the package -->
+  <Target Name="IncludeGeneratedJsonInPackage">
     <ItemGroup>
-      <ProjectReference Include="..\LspUse.Application\LspUse.Application.csproj" />
+      <TfmSpecificPackageFile Include="$(MSBuildProjectDirectory)/.mcp/server.json">
+        <PackagePath>/</PackagePath>
+      </TfmSpecificPackageFile>
     </ItemGroup>
+  </Target>
 
+  <!-- Include additional files for browsing the MCP server. -->
   <ItemGroup>
-    <PackageReference Include="Microsoft.Extensions.Hosting" Version="8.0.0" />
-    <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="8.0.0" />
-    <PackageReference Include="OneOf" Version="3.0.271" />
+    <!-- Solution README -->
+    <None Include="..\..\README.md" Pack="true" PackagePath="/"/>
+    <!-- Template for MCP Server JSON -->
+    <None Include=".mcp\server.json.template"/>
   </ItemGroup>
 
-  <ItemGroup>
-    <PackageReference Include="ModelContextProtocol" Version="0.3.0-preview.2" />
-  </ItemGroup>
 
-  <ItemGroup>
-    <Folder Include="nupkg\" />
-  </ItemGroup>
-  
 </Project>
