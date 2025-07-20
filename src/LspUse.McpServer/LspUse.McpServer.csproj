@@ -75,7 +75,7 @@
   <Target Name="IncludeGeneratedJsonInPackage">
     <ItemGroup>
       <TfmSpecificPackageFile Include="$(MSBuildProjectDirectory)/.mcp/server.json">
-        <PackagePath>/</PackagePath>
+        <PackagePath>.mcp/</PackagePath>
       </TfmSpecificPackageFile>
     </ItemGroup>
   </Target>
