@@ -109,7 +109,9 @@ dotnet tool install --global LspUse.Csharp.osx-arm64
 
 ## Configuration
 
-### Claude Code
+<details>
+
+<summary>Claude Code</summary>
 
 Update your `.mcp.json` file with a `csharp` where the path and sln files match the ones of your repo
 
@@ -132,7 +134,11 @@ Update your `.mcp.json` file with a `csharp` where the path and sln files match 
 
 Update your `CLAUDE.md` with instructions on tool use recommending to prefer LSP-based discovery over traditional file read.
 
-### OpenAI Codex
+</details>
+
+<details>
+
+<summary>OpenAI Codex</summary>
 
 Add or update your `$HOME/.codex/config.toml`. Doesn't seem to work at repo level yet. 
 
@@ -144,7 +150,11 @@ args = ["--workspace=/path/to/repo", "--sln=/path/to/repo/solution.sln"]
 
 Update your `AGENTS.md` with instructions on tool use like [here](AGENTS.md).
 
-### Copilot in VS Code
+</details>
+
+<details>
+
+<summary>Copilot in VS Code</summary>
 
 Add or update your `.vscode/mcp.toml` to include this `csharp` server and provide your own solution file name
 
@@ -164,6 +174,8 @@ Add or update your `.vscode/mcp.toml` to include this `csharp` server and provid
    }
  }
  ```
+
+</details>
 
 ## Available Tools
 
