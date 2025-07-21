@@ -52,7 +52,7 @@ public static class RenameSymbolTool
         return result.Match(
             success =>
             {
-                logger.LogInformation("Symbol rename completed successfully. Changed {FileCount} files with {TotalEdits} edits", 
+                logger.LogInformation("Symbol rename completed successfully. Changed {FileCount} files with {TotalEdits} edits",
                     success.ChangedFiles.Count(), success.TotalEditsApplied);
                 return success;
             },

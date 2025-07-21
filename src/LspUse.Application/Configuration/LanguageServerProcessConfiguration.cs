@@ -14,5 +14,8 @@ public record LanguageServerProcessConfiguration
     public string? SolutionPath { get; init; }
     public IReadOnlyList<string>? ProjectPaths { get; init; }
 
-    public override string ToString() => $"{Command} {string.Join(' ', Arguments ?? [])} Workspace Path: {WorkspacePath} Solution Path: {SolutionPath} Project Paths: {string.Join(' ', ProjectPaths ?? [])}";
+    public override string ToString() =>
+        $"{Command} {string.Join(' ', Arguments ?? [])} " + $"Workspace Path: {WorkspacePath} " +
+        $"Solution Path: {SolutionPath} " +
+        $"Project Paths: {string.Join(' ', ProjectPaths ?? [])}";
 }

@@ -511,12 +511,12 @@ public class ApplicationService : IApplicationService
                 }, cancellationToken);
 
             var documentSymbols = matchingSymbols.Select(s => new DocumentSymbol
-                {
-                    Name = s.Name ?? string.Empty,
-                    Kind = s.Kind?.ToString() ?? "Unknown",
-                    ContainerName = s.ContainerName,
-                    Location = s.Location?.ToSymbolLocation()
-                })
+            {
+                Name = s.Name ?? string.Empty,
+                Kind = s.Kind?.ToString() ?? "Unknown",
+                ContainerName = s.ContainerName,
+                Location = s.Location?.ToSymbolLocation()
+            })
                 .ToList();
 
             // Extract locations, enrich them, and create a lookup
@@ -695,12 +695,12 @@ public class ApplicationService : IApplicationService
                     }, cancellationToken);
 
                 var symbols = documentSymbols?.Select(x => new DocumentSymbol
-                    {
-                        Name = x.Name,
-                        ContainerName = x.ContainerName,
-                        Kind = x.Kind.ToString(),
-                        Location = x.Location?.ToSymbolLocation()
-                    })
+                {
+                    Name = x.Name,
+                    ContainerName = x.ContainerName,
+                    Kind = x.Kind.ToString(),
+                    Location = x.Location?.ToSymbolLocation()
+                })
                     .ToList() ?? [];
 
                 // Extract locations, enrich them, and create a lookup

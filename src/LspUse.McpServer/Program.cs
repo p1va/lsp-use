@@ -1,3 +1,4 @@
+using System.CommandLine;
 using LspUse.Application;
 using LspUse.Application.Configuration;
 using LspUse.LanguageServerClient;
@@ -7,7 +8,6 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using System.CommandLine;
 
 // Configure CLI arguments
 var workspaceOption = new Option<DirectoryInfo?>("--workspace", "-w")
@@ -48,14 +48,14 @@ rootCommand.SetAction(async (parseResult, cancellationToken) =>
     var solution = parseResult.GetValue(solutionOption);
     var projects = parseResult.GetValue(projectsOption);
     var logLevel = parseResult.GetValue(logLevelOption);
-    
+
     // Validate that either solution or projects is provided
     if (solution == null && (projects == null || !projects.Any()))
     {
         Console.Error.WriteLine("Error: Either --sln or --projects must be specified.");
         return 1;
     }
-    
+
     return await RunApplication(workspace, solution, projects, logLevel);
 });
 
@@ -66,11 +66,11 @@ return await parseResult.InvokeAsync();
 static async Task<int> RunApplication(DirectoryInfo workspace, FileInfo? solution, IEnumerable<FileInfo>? projects, LogLevel logLevel)
 {
     const string LanguageServerExecutable = "Microsoft.CodeAnalysis.LanguageServer";
-    
+
     var lspDirectory = Path.Combine(AppContext.BaseDirectory, "lsp");
     var languageServerDllPath = Path.Combine(lspDirectory, LanguageServerExecutable);
     const string RoslynExtensionsLogsPath = "logs";
-    
+
     // Get log level from environment variable if not specified
     var effectiveLogLevel = logLevel;
     if (Environment.GetEnvironmentVariable("LSP_USE_LOG_LEVEL") is var envLogLevel &&
@@ -78,7 +78,7 @@ static async Task<int> RunApplication(DirectoryInfo workspace, FileInfo? solutio
     {
         effectiveLogLevel = parsedLogLevel;
     }
-    
+
     var builder = Host.CreateApplicationBuilder();
 
     // Prepare file logging location  
@@ -102,20 +102,20 @@ static async Task<int> RunApplication(DirectoryInfo workspace, FileInfo? solutio
         ["Lsp:Arguments:2"] = "--stdio",
         ["Lsp:WorkspacePath"] = workspace.FullName,
     };
-    
+
     // Add solution path if provided
     if (solution != null)
     {
         config["Lsp:SolutionPath"] = solution.FullName;
     }
-    
+
     builder.Configuration.AddInMemoryCollection(config);
-    
+
     // Add project paths if specified
     if (projects != null && projects.Any())
     {
         var projectConfig = new Dictionary<string, string?>();
-        int index = 0;
+        var index = 0;
         foreach (var project in projects)
         {
             projectConfig[$"Lsp:ProjectPaths:{index}"] = project.FullName;
@@ -140,7 +140,7 @@ static async Task<int> RunApplication(DirectoryInfo workspace, FileInfo? solutio
 
     var logger = host.Services.GetRequiredService<ILoggerFactory>().CreateLogger<Program>();
 
-    logger.LogInformation("[Program] Starting application with workspace: {Workspace}, solution: {Solution}, projects: {Projects}",
+    logger.LogInformation("Starting application with workspace: {Workspace}, solution: {Solution}, projects: {Projects}",
         workspace.FullName, solution?.FullName ?? "(none)", projects != null ? string.Join(", ", projects.Select(p => p.FullName)) : "(none)");
 
     try
