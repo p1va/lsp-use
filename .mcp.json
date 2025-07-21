@@ -7,8 +7,8 @@
     "csharp": {
       "command": "lsp-use",
       "args": [
-        "--workspace",
-        ".",
+        "--language",
+        "vscode-csharp",
         "--sln",
         "lsp-use.sln"
       ]
