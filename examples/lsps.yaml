@@ -1,0 +1,120 @@
+# LSP Configuration for lsp-use
+# Place this file at: ~/.config/lsp-use/lsps.yaml
+#
+# This example shows the three LSPs currently supported by lsp-use
+# with their optimized configurations and symbol filtering options.
+
+lsps:
+  # ==============================================================================
+  # JavaScript/TypeScript Ecosystem
+  # ==============================================================================
+  typescript:
+    command: "typescript-language-server --stdio"
+    extensions:
+      # JavaScript variants
+      ".js": "javascript"           # Plain JavaScript
+      ".mjs": "javascript"          # ES6 modules  
+      ".cjs": "javascript"          # CommonJS modules
+      ".jsx": "javascriptreact"     # React JSX components
+      
+      # TypeScript variants
+      ".ts": "typescript"           # TypeScript source
+      ".mts": "typescript"          # TypeScript ES6 modules
+      ".cts": "typescript"          # TypeScript CommonJS  
+      ".tsx": "typescriptreact"     # React TypeScript components
+      
+      # Config files
+      ".json": "json"               # JSON configuration
+    workspace_files: ["package.json", "tsconfig.json"]
+    diagnostics:
+      strategy: "push"              # TypeScript sends diagnostics via notifications
+      wait_timeout_ms: 3000         # Wait 3 seconds for diagnostics after file operations
+    symbols:
+      max_depth: null               # Show all nesting levels (good for exploring TS/JS structure)
+      kinds: ["Function", "Class", "Variable", "Enum", "Interface", "Module"]
+
+  # ==============================================================================
+  # .NET Ecosystem - C#
+  # ==============================================================================  
+  csharp:
+    command: "Microsoft.CodeAnalysis.LanguageServer --logLevel=Information --stdio"
+    extensions:
+      ".cs": "csharp"               # C# source files
+      ".csx": "csharp"              # C# script files
+      ".cake": "csharp"             # Cake build scripts
+      ".cshtml": "razor"            # Razor pages (ASP.NET)
+      ".razor": "razor"             # Blazor components
+    workspace_files: ["*.sln", "*.csproj", "*.fsproj", "global.json", "Directory.Build.props"]
+    diagnostics:
+      strategy: "pull"              # C# uses pull diagnostics (request on-demand)
+    symbols:
+      max_depth: null               # Show all symbols (C# has clean nesting)
+      kinds: ["Function", "Class", "Variable", "Enum", "Interface", "Module"]
+
+  # ==============================================================================
+  # Python Ecosystem (Pyright)
+  # ==============================================================================
+  pyright:
+    command: "pyright-langserver --stdio"
+    extensions:
+      ".py": "python"
+    workspace_files: ["pyproject.toml", "requirements.txt"]
+    diagnostics:
+      strategy: "pull"              # Pyright uses pull diagnostics
+    symbols:
+      max_depth: 0                  # Only top-level symbols (reduces noise in Python)
+      kinds: ["Function", "Class", "Variable"]
+
+# ==============================================================================
+# Symbol Filtering Configuration:
+# ==============================================================================
+# All LSP profiles support symbol filtering to optimize get_symbols output:
+#
+# symbols:
+#   max_depth: null | 0 | 1 | 2 | ...  # Maximum nesting depth to show
+#   kinds: ["Type1", "Type2", ...]     # Only include specific symbol types
+#
+# max_depth examples:
+# - null: Show all symbols at any depth (default)
+# - 0: Only top-level symbols (classes, functions, variables)
+# - 1: Top-level + first nested level (methods inside classes)
+# - 2: Two levels of nesting, etc.
+#
+# Available symbol kinds:
+# Function, Class, Interface, Enum, Variable, Constant, Property, Method, Field, Module
+#
+# Configuration strategies:
+# - TypeScript/JavaScript: max_depth: null (explore deep object structures)
+# - C#: max_depth: null (clean language with good nesting) 
+# - Python: max_depth: 0 (reduce noise from nested functions/classes)
+#
+# ==============================================================================
+# MCP Tool Usage:
+# ==============================================================================
+# The max_depth setting provides a default, but can be overridden per request:
+#
+# # Use profile default
+# mcp__csharp__get_symbols(file="MyClass.cs")
+#
+# # Override to show only top-level
+# mcp__csharp__get_symbols(file="MyClass.cs", maxDepth=0)
+#
+# # Override to show two levels
+# mcp__csharp__get_symbols(file="MyClass.cs", maxDepth=1)
+#
+# This gives you both sensible defaults and flexible per-request control.
+
+# ==============================================================================
+# Installation Instructions:
+# ==============================================================================
+# 
+# TypeScript:
+#   npm install -g typescript-language-server typescript
+#
+# C# (Roslyn):
+#   Install via lsp-use - it will download the LSP automatically
+#
+# Python (Pyright):
+#   npm install -g pyright
+#
+# Then place this file at ~/.config/lsp-use/lsps.yaml and configure your MCP

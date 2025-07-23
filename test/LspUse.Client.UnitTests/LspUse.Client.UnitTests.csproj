@@ -6,6 +6,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\LspUse.LanguageServerClient\LspUse.LanguageServerClient.csproj" />
+    <ProjectReference Include="..\..\src\LspUse.Application\LspUse.Application.csproj" />
   </ItemGroup>
 
   <ItemGroup>
@@ -13,5 +14,6 @@
     <PackageReference Include="xunit.runner.visualstudio" Version="2.5.0" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.8.0" />
     <PackageReference Include="StreamJsonRpc" Version="2.22.11" />
+    <PackageReference Include="Microsoft.Extensions.Logging" Version="9.0.0" />
   </ItemGroup>
 </Project>

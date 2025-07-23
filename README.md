@@ -2,21 +2,21 @@
 
 # lsp-use
 
-An MCP interface to bring the structure of C# Language Server to LLMs
+An MCP interface to bring the structure of Language Server to Coding Agents
 
-[![NuGet: LspUse.Csharp.linux-x64](https://img.shields.io/nuget/v/LspUse.Csharp.linux-x64?label=LspUse.Csharp.linux-x64)](https://www.nuget.org/packages/LspUse.Csharp.linux-x64)
-[![NuGet: LspUse.Csharp.win-x64](https://img.shields.io/nuget/v/LspUse.Csharp.win-x64?label=LspUse.Csharp.win-x64)](https://www.nuget.org/packages/LspUse.Csharp.win-x64)
-[![NuGet: LspUse.Csharp.osx-arm64](https://img.shields.io/nuget/v/LspUse.Csharp.osx-arm64?label=LspUse.Csharp.osx-arm64)](https://www.nuget.org/packages/LspUse.Csharp.osx-arm64)
+![C#](https://img.shields.io/badge/c%23-%23239120.svg?logo=csharp&logoColor=white)
+![Python](https://img.shields.io/badge/python-3670A0?&logo=python&logoColor=ffdd54)
+![TypeScript](https://img.shields.io/badge/typescript-%23007ACC.svg?ogo=typescript&logoColor=white)
 
 </div>
 
 ## Introduction
 
-By giving LLMs direct access to the same Language Server that humans use through VS Code or other IDEs the codebase becomes more structured and easy to discover and navigate. This shorten the feedback loop, allows for codebase-aware generation and is an efficent use of the model's context.
+By giving Coding Agents direct access to the same Language Server that humans use through VS Code or other IDEs the codebase becomes more structured and easy to discover and navigate. This shorten the feedback loop, allows for codebase-aware generation and is an efficent use of the model's context.
 
 <details>
 
-<summary>More on the why</summary>
+<summary><b>More on why with this C# example</b></summary>
 
 ### Problem
 
@@ -91,21 +91,104 @@ For example invoking `mcp__csharp__get_symbols(YourCompanyClient.cs)` would retu
 
 ## Installation
 
-Install the platform-specific package globally using dotnet tool:
+The tool spawn a Language Server process and then communicates over stdio with it according to the [Language Server Protocol](https://microsoft.github.io/language-server-protocol/). In order for the tool to work the Language Server for the language of choice needs to also be installed.
 
-**Linux**
-```bash
-dotnet tool install --global LspUse.Csharp.linux-x64
-```
-**Windows**
-```bash
-dotnet tool install --global LspUse.Csharp.win-x64
+### Language Servers
+The following Language Servers were tested however more should be compatible and can be added through configuration
+
+<details>
+
+<summary><b>✅ Csharp</b></summary>
+
+Microsoft's C# language server can be downloaded from nuget. Alternatively the one bundled inside the VSCode C# DevKit extension can be used if the installation folder is known.
+
+> 🚧 More instructions will be added soon. For now the recommended installation path is with the combined Nuget package below.
+
+</details>
+
+<details>
+
+<summary><b>✅ Pyright</b></summary>
+
+Install Pyright with `npm install -g pyright` then add the following to your project `pyproject.toml` to correctly point it in the direction of the virtual environment to be used.
+
+```toml
+[tool.pyright]
+venvPath = "."
+venv = ".venv"
 ```
 
-**Apple Silicon**
+> ⚠️ A sympthom of Pyright not being properly configured is the GetDiagnostics tool only reporting module import errors even when none in the IDE.
+
+</details>
+
+<details>
+
+<summary><b>✅ Typescript</b></summary>
+
+Install the Typescript Language Server with `npm install -g typescript typescript-language-server`
+
+</details>
+
+### Install the tool and the C# Language Server
+
+Install the tool and the C# Langugage Server as one package.
+
+| **OS**          | Install  	| Version  	|
+|-----------------|-----------|-----------|
+| **Linux**       | `dotnet tool install -g LspUse.Csharp.linux-x64`| [![NuGet: LspUse.Csharp.linux-x64](https://img.shields.io/nuget/v/LspUse.Csharp.linux-x64?label=LspUse.Csharp.linux-x64)](https://www.nuget.org/packages/LspUse.Csharp.linux-x64) |
+| **Windows**	| `dotnet tool install -g LspUse.Csharp.win-x64`| [![NuGet: LspUse.Csharp.win-x64](https://img.shields.io/nuget/v/LspUse.Csharp.win-x64?label=LspUse.Csharp.win-x64)](https://www.nuget.org/packages/LspUse.Csharp.win-x64)	|
+| **MacOS**      |`dotnet tool install -g LspUse.Csharp.osx-arm64`| [![NuGet: LspUse.Csharp.osx-arm64](https://img.shields.io/nuget/v/LspUse.Csharp.osx-arm64?label=LspUse.Csharp.osx-arm64)](https://www.nuget.org/packages/LspUse.Csharp.osx-arm64)|
+
+### Install the tool with no LSP
+
+Coming soon...
+
+`dotnet tool install -g LspUse`
+
+## Usage
+
+- `lsp-use --help` for a list of the possible options and to see configuration paths
+- `lsp-use --list-lsps` for a list of the configured language servers (some will be built-in while other taken by the optional config file)
+- `lsp-use --version` to check version
+
+### Running
+
+For C# projects the tool can be executed with:
+
 ```bash
-dotnet tool install --global LspUse.Csharp.osx-arm64
+# Analyze a C# solution
+lsp-use --workspace /path/to/folder --sln /path/to/folder/MySolution.sln
 ```
+
+For other languages running `lsp-use` *should* be all you need thanks to detection of the configured workspace files.
+
+Selecting a language server can be done via `--lsp` option:
+
+```bash
+lsp-use --workspace /path/to/project --lsp typescript # pre configured
+lsp-use --workspace /path/to/project --lsp pyright # pre configured
+lsp-use --workspace /path/to/project --lsp your-custom-lsp
+```
+
+### Adding more Language Servers
+
+For advanced usage, create a custom LSP configuration file at `~/.config/lsp-use/lsps.yaml`:
+
+```bash
+# Create config directory
+mkdir -p ~/.config/lsp-use
+
+# Copy example configuration
+curl -o ~/.config/lsp-use/lsps.yaml https://raw.githubusercontent.com/p1va/lsp-use/main/examples/lsps.yaml
+```
+
+The configuration file allows you to:
+- **Customize symbol filtering**: Control depth and symbol types shown
+- **Add new file extensions**: Map custom file types to language servers
+- **Tune diagnostics**: Configure error reporting strategies
+
+ **See the complete example**: [examples/lsps.yaml](examples/lsps.yaml)
 
 ## Configuration
 

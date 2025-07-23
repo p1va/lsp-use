@@ -13,6 +13,7 @@ public record LanguageServerProcessConfiguration
     public required string WorkspacePath { get; init; }
     public string? SolutionPath { get; init; }
     public IReadOnlyList<string>? ProjectPaths { get; init; }
+    public string? ProfileName { get; init; }
 
     public override string ToString() =>
         $"{Command} {string.Join(' ', Arguments ?? [])} " + $"Workspace Path: {WorkspacePath} " +

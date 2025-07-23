@@ -1,14 +1,15 @@
 using LspUse.LanguageServerClient;
 using LspUse.LanguageServerClient.Models;
+using LspUse.TestHarness.Csharp;
 using Xunit.Abstractions;
 
 namespace LspUse.TestHarness;
 
-public sealed class LspTests
+public sealed class CsharpLspTests
 {
     private readonly ITestOutputHelper _output;
 
-    public LspTests(ITestOutputHelper output) => _output = output;
+    public CsharpLspTests(ITestOutputHelper output) => _output = output;
 
     [Fact(DisplayName = "textDocument/references")]
     public async Task ReferencesRequest()
@@ -17,7 +18,7 @@ public sealed class LspTests
 
         var fileUri = TestResource.DiagnosticsErrorTest;
 
-        await using var ctx = await LspTestHelpers.StartAndOpenSolutionAsync(_output);
+        await using var ctx = await CsharpLspTestHelpers.StartAndOpenSolutionAsync(_output);
 
         var response = await ctx.Client.ReferencesAsync(new DocumentClientRequest
         {
@@ -31,7 +32,7 @@ public sealed class LspTests
     [Fact(DisplayName = "textDocument/completion")]
     public async Task CompletionRequest()
     {
-        await using var ctx = await LspTestHelpers.StartAndOpenSolutionAsync(_output);
+        await using var ctx = await CsharpLspTestHelpers.StartAndOpenSolutionAsync(_output);
 
         var editorPosition = (Line: 14u, Characther: 14u);
 
@@ -64,7 +65,7 @@ public sealed class LspTests
 
         var fileUri = TestResource.JsonRpcTest;
 
-        await using var ctx = await LspTestHelpers.StartAndOpenSolutionAsync(_output);
+        await using var ctx = await CsharpLspTestHelpers.StartAndOpenSolutionAsync(_output);
 
         await ctx.Client.DefinitionAsync(new DocumentClientRequest
         {
@@ -79,7 +80,7 @@ public sealed class LspTests
         // Use a file that's actually part of the project instead of TestSources
         var fileUri = TestResource.FileLoggerProvider;
 
-        await using var ctx = await LspTestHelpers.StartAndOpenSolutionAsync(_output);
+        await using var ctx = await CsharpLspTestHelpers.StartAndOpenSolutionAsync(_output);
 
         // Open the file with an intentional error
         var text = await File.ReadAllTextAsync(fileUri.LocalPath);
@@ -108,7 +109,7 @@ public sealed class LspTests
         // Use a file that's part of the actual project with real errors
         var fileUri = TestResource.DiagnosticsErrorTest;
 
-        await using var ctx = await LspTestHelpers.StartAndOpenSolutionAsync(_output);
+        await using var ctx = await CsharpLspTestHelpers.StartAndOpenSolutionAsync(_output);
 
         // open with errors
         await ctx.Client.DidOpenAsync(new DidOpenTextDocumentParams
@@ -152,7 +153,7 @@ public sealed class LspTests
 
         //var fileUri = TestResource.DiagnosticsErrorTest;
 
-        await using var ctx = await LspTestHelpers.StartAndOpenSolutionAsync(_output);
+        await using var ctx = await CsharpLspTestHelpers.StartAndOpenSolutionAsync(_output);
 
         await ctx.Client.DidOpenAsync(new DidOpenTextDocumentParams
         {
@@ -182,7 +183,7 @@ public sealed class LspTests
 
         var fileUri = TestResource.JsonRpcTest;
 
-        await using var ctx = await LspTestHelpers.StartAndOpenSolutionAsync(_output);
+        await using var ctx = await CsharpLspTestHelpers.StartAndOpenSolutionAsync(_output);
 
         // 1. Ask Roslyn for the definition at the requested position ----
         var defLocations = await ctx.Client.DefinitionAsync(new DocumentClientRequest
@@ -228,7 +229,7 @@ public sealed class LspTests
     [Fact(DisplayName = "workspace/symbol")]
     public async Task WorkspaceSymbol()
     {
-        await using var ctx = await LspTestHelpers.StartAndOpenSolutionAsync(_output);
+        await using var ctx = await CsharpLspTestHelpers.StartAndOpenSolutionAsync(_output);
 
         var response = await ctx.Client.WorkspaceSymbolAsync(new WorkspaceSymbolParams
         {
@@ -243,7 +244,7 @@ public sealed class LspTests
     {
         var fileUri = TestResource.ApplicationService;
 
-        await using var ctx = await LspTestHelpers.StartAndOpenSolutionAsync(_output);
+        await using var ctx = await CsharpLspTestHelpers.StartAndOpenSolutionAsync(_output);
 
         await ctx.Client.DidOpenAsync(new DidOpenTextDocumentParams
         {
@@ -269,7 +270,7 @@ public sealed class LspTests
 
         var fileUri = TestResource.FindReferencesTool;
 
-        await using var ctx = await LspTestHelpers.StartAndOpenSolutionAsync(_output);
+        await using var ctx = await CsharpLspTestHelpers.StartAndOpenSolutionAsync(_output);
 
         var response = await ctx.Client.TypeDefinitionAsync(new DocumentClientRequest
         {
@@ -286,7 +287,7 @@ public sealed class LspTests
 
         var fileUri = TestResource.ApplicationService;
 
-        await using var ctx = await LspTestHelpers.StartAndOpenSolutionAsync(_output);
+        await using var ctx = await CsharpLspTestHelpers.StartAndOpenSolutionAsync(_output);
 
         var response = await ctx.Client.ImplementationAsync(new DocumentClientRequest
         {
@@ -298,7 +299,7 @@ public sealed class LspTests
     [Fact(DisplayName = "workspace/diagnostic")]
     public async Task WorkspaceDiagnostics()
     {
-        await using var ctx = await LspTestHelpers.StartAndOpenSolutionAsync(_output);
+        await using var ctx = await CsharpLspTestHelpers.StartAndOpenSolutionAsync(_output);
 
         await ctx.CapabilityRegistration.RegistrationCompleted;
 
@@ -329,7 +330,7 @@ public sealed class LspTests
         //var fileUri = TestResource.FileLoggerProvider;
         var fileUri = TestResource.DiagnosticsErrorTest;
 
-        await using var ctx = await LspTestHelpers.StartAndOpenSolutionAsync(_output);
+        await using var ctx = await CsharpLspTestHelpers.StartAndOpenSolutionAsync(_output);
 
         await ctx.CapabilityRegistration.RegistrationCompleted;
 
@@ -379,7 +380,7 @@ public sealed class LspTests
 
         var editorPosition = (Line: 16u, Characther: 38u);
 
-        await using var ctx = await LspTestHelpers.StartAndOpenSolutionAsync(_output);
+        await using var ctx = await CsharpLspTestHelpers.StartAndOpenSolutionAsync(_output);
 
         await ctx.Client.DidOpenAsync(new DidOpenTextDocumentParams
         {

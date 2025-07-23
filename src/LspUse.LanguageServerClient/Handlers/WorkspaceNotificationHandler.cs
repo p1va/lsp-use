@@ -1,5 +1,4 @@
 using System.Text.Json.Nodes;
-using System.Threading.Tasks;
 using StreamJsonRpc;
 
 namespace LspUse.LanguageServerClient.Handlers;
@@ -28,5 +27,10 @@ public sealed class WorkspaceNotificationHandler : ILspNotificationHandler
     public void OnWorkspaceInitialized(JsonNode? _ = null)
     {
         _initializationTcs.TrySetResult();
+    }
+
+    [JsonRpcMethod("workspace/diagnostic/refresh")]
+    public static void OnWorkspaceDiagnosticsRefresh()
+    {
     }
 }

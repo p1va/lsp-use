@@ -1,26 +1,15 @@
 using System.Diagnostics;
-using System.Text.Json;
-using System.Text.Json.Nodes;
 using LspUse.LanguageServerClient;
 using LspUse.LanguageServerClient.Handlers;
 using LspUse.LanguageServerClient.Json;
-using LspUse.LanguageServerClient.Models;
+using Microsoft.Extensions.Logging.Abstractions;
 using StreamJsonRpc;
 using Xunit.Abstractions;
 
-namespace LspUse.TestHarness;
+namespace LspUse.TestHarness.Csharp;
 
-internal static class LspTestHelpers
+internal static class CsharpLspTestHelpers
 {
-    private class ActionTraceListener(Action<string> onWriteLine) : TraceListener
-    {
-        public override void Write(string? _)
-        {
-        }
-
-        public override void WriteLine(string? message) => onWriteLine(message ?? string.Empty);
-    }
-
     private static readonly string RepositoryPath = TestResource.RepositoryRoot;
     private static readonly string SolutionPath = TestResource.SolutionFile;
 
@@ -35,14 +24,13 @@ internal static class LspTestHelpers
     internal static async Task<LspTestContext> StartAndOpenSolutionAsync(
         ITestOutputHelper outputHelper)
     {
-        // Launch server process -----------------------------
         var psi = new ProcessStartInfo
         {
             FileName = "/usr/bin/dotnet",
             UseShellExecute = false,
             RedirectStandardInput = true,
             RedirectStandardOutput = true,
-            RedirectStandardError = true
+            RedirectStandardError = true,
         };
 
         psi.EnvironmentVariables.Add("DOTNET_USE_POLLING_FILE_WATCHER", "true");
@@ -64,10 +52,13 @@ internal static class LspTestHelpers
         formatter.JsonSerializerOptions.Converters.Add(new AbsoluteUriJsonConverter());
 
         var messageHandler = new HeaderDelimitedMessageHandler(proc.StandardInput.BaseStream,
-            proc.StandardOutput.BaseStream, formatter);
+            proc.StandardOutput.BaseStream,
+            formatter
+        );
 
         var windowHandler = new WindowNotificationHandler();
-        var diagnosticsHandler = new DiagnosticsNotificationHandler();
+        var diagnosticsHandler =
+            new DiagnosticsNotificationHandler(new NullLogger<DiagnosticsNotificationHandler>());
         var workspaceHandler = new WorkspaceNotificationHandler();
         var capabilityRegistrationHandler = new ClientCapabilityRegistrationHandler();
 
@@ -79,7 +70,8 @@ internal static class LspTestHelpers
 
         rpc.TraceSource.Switch.Level = SourceLevels.All;
         rpc.TraceSource.Listeners.Add(
-            new ActionTraceListener(m => outputHelper.WriteLine("[trace] " + m)));
+            new ActionTraceListener(m => outputHelper.WriteLine("[trace] " + m))
+        );
 
         rpc.StartListening();
 
@@ -113,27 +105,37 @@ internal static class LspTestHelpers
                     diagnostic = new
                     {
                         dynamicRegistration = true,
-                        relatedDocumentSupport = true
-                    }
-                }
-            }
-        });
+                        relatedDocumentSupport = true,
+                    },
+                },
+            },
+        }
+        );
 
         // empty params per LSP
         await lsp.InitializedAsync(new
         {
-        });
+        }
+        );
 
         // Open solution ------------------------------------
-        await lsp.NotifyAsync("solution/open", new
-        {
-            solution = new Uri(SolutionPath)
-        });
+        await lsp.NotifyAsync("solution/open",
+            new
+            {
+                solution = new Uri(SolutionPath),
+            }
+        );
 
         // Wait until Roslyn reports projects loaded --------
         await workspaceHandler.WorkspaceInitialization;
 
-        return new LspTestContext(rpc, windowHandler, diagnosticsHandler, workspaceHandler,
-            capabilityRegistrationHandler, proc, lsp);
+        return new LspTestContext(rpc,
+            windowHandler,
+            diagnosticsHandler,
+            workspaceHandler,
+            capabilityRegistrationHandler,
+            proc,
+            lsp
+        );
     }
 }
