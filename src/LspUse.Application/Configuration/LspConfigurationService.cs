@@ -3,40 +3,40 @@ using Microsoft.Extensions.Logging;
 namespace LspUse.Application.Configuration;
 
 /// <summary>
-/// Service responsible for orchestrating language server configuration loading
-/// and providing configured LanguageProfileResolver instances.
+/// Service responsible for orchestrating LSP server configuration loading
+/// and providing configured LspProfileResolver instances.
 /// This service contains pure business logic and is agnostic to the storage mechanism.
 /// </summary>
-public class LanguageConfigurationService
+public class LspConfigurationService
 {
-    private readonly ILanguageConfigurationLoader _configurationLoader;
-    private readonly ILogger<LanguageConfigurationService> _logger;
+    private readonly ILspConfigurationLoader _configurationLoader;
+    private readonly ILogger<LspConfigurationService> _logger;
 
-    public LanguageConfigurationService(
-        ILanguageConfigurationLoader configurationLoader,
-        ILogger<LanguageConfigurationService> logger)
+    public LspConfigurationService(
+        ILspConfigurationLoader configurationLoader,
+        ILogger<LspConfigurationService> logger)
     {
         _configurationLoader = configurationLoader;
         _logger = logger;
     }
 
     /// <summary>
-    /// Creates a language profile resolver with the complete configuration hierarchy.
+    /// Creates an LSP profile resolver with the complete configuration hierarchy.
     /// Priority order: Custom Profiles > Package Defaults > Built-in Profiles
     /// </summary>
-    /// <returns>A configured LanguageProfileResolver</returns>
-    public async Task<LanguageProfileResolver> CreateResolverAsync()
+    /// <returns>A configured LspProfileResolver</returns>
+    public async Task<LspProfileResolver> CreateResolverAsync()
     {
         // Load all configuration sources
         var builtInProfiles = _configurationLoader.GetBuiltInProfiles();
         var packageDefaults = await _configurationLoader.LoadPackageDefaultsAsync();
         var customProfiles = await _configurationLoader.LoadCustomProfilesAsync();
 
-        _logger.LogDebug("Loaded {BuiltInCount} built-in, {PackageCount} package default, {CustomCount} custom language profiles", 
+        _logger.LogDebug("Loaded {BuiltInCount} built-in, {PackageCount} package default, {CustomCount} custom LSP profiles", 
             builtInProfiles.Count, packageDefaults.Count, customProfiles.Count);
 
         // Apply configuration hierarchy: Built-in < Package Defaults < Custom
-        var mergedProfiles = new Dictionary<string, LanguageProfile>(builtInProfiles);
+        var mergedProfiles = new Dictionary<string, LspProfile>(builtInProfiles);
         
         // Package defaults override built-ins
         foreach (var (key, profile) in packageDefaults)
@@ -44,6 +44,6 @@ public class LanguageConfigurationService
             mergedProfiles[key] = profile;
         }
 
-        return new LanguageProfileResolver(mergedProfiles, customProfiles);
+        return new LspProfileResolver(mergedProfiles, customProfiles);
     }
 }

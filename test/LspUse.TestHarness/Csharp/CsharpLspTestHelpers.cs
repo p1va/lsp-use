@@ -1,26 +1,15 @@
 using System.Diagnostics;
-using System.Text.Json;
-using System.Text.Json.Nodes;
 using LspUse.LanguageServerClient;
 using LspUse.LanguageServerClient.Handlers;
 using LspUse.LanguageServerClient.Json;
-using LspUse.LanguageServerClient.Models;
+using Microsoft.Extensions.Logging.Abstractions;
 using StreamJsonRpc;
 using Xunit.Abstractions;
 
 namespace LspUse.TestHarness;
 
-internal static class LspTestHelpers
+internal static class CsharpLspTestHelpers
 {
-    private class ActionTraceListener(Action<string> onWriteLine) : TraceListener
-    {
-        public override void Write(string? _)
-        {
-        }
-
-        public override void WriteLine(string? message) => onWriteLine(message ?? string.Empty);
-    }
-
     private static readonly string RepositoryPath = TestResource.RepositoryRoot;
     private static readonly string SolutionPath = TestResource.SolutionFile;
 
@@ -67,7 +56,7 @@ internal static class LspTestHelpers
             proc.StandardOutput.BaseStream, formatter);
 
         var windowHandler = new WindowNotificationHandler();
-        var diagnosticsHandler = new DiagnosticsNotificationHandler();
+        var diagnosticsHandler = new DiagnosticsNotificationHandler(new NullLogger<DiagnosticsNotificationHandler>());
         var workspaceHandler = new WorkspaceNotificationHandler();
         var capabilityRegistrationHandler = new ClientCapabilityRegistrationHandler();
 
@@ -108,7 +97,7 @@ internal static class LspTestHelpers
                         relatedInformation = true,
                         versionSupport = true,
                         codeDescriptionSupport = true,
-                        dataSupport = true,
+                        dataSupport = true
                     },
                     diagnostic = new
                     {

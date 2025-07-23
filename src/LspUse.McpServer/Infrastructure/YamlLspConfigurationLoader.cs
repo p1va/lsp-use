@@ -10,12 +10,12 @@ namespace LspUse.McpServer.Infrastructure;
 /// This class contains all the YAML-specific and file system logic, keeping the
 /// Application layer clean and focused on business logic.
 /// </summary>
-public class YamlLanguageConfigurationLoader : ILanguageConfigurationLoader
+public class YamlLspConfigurationLoader : ILspConfigurationLoader
 {
-    private readonly ILogger<YamlLanguageConfigurationLoader> _logger;
+    private readonly ILogger<YamlLspConfigurationLoader> _logger;
     private readonly IDeserializer _yamlDeserializer;
 
-    public YamlLanguageConfigurationLoader(ILogger<YamlLanguageConfigurationLoader> logger)
+    public YamlLspConfigurationLoader(ILogger<YamlLspConfigurationLoader> logger)
     {
         _logger = logger;
         _yamlDeserializer = new DeserializerBuilder()
@@ -25,54 +25,62 @@ public class YamlLanguageConfigurationLoader : ILanguageConfigurationLoader
     }
 
     /// <inheritdoc />
-    public async Task<Dictionary<string, LanguageProfile>> LoadCustomProfilesAsync()
+    public async Task<Dictionary<string, LspProfile>> LoadCustomProfilesAsync()
     {
         var userConfigPath = GetUserConfigPath();
         
         if (!File.Exists(userConfigPath))
         {
             _logger.LogDebug("User configuration file not found at {Path}", userConfigPath);
-            return new Dictionary<string, LanguageProfile>();
+            return new Dictionary<string, LspProfile>();
         }
 
         try
         {
             var yamlContent = await File.ReadAllTextAsync(userConfigPath);
-            var userConfig = _yamlDeserializer.Deserialize<LanguageConfig>(yamlContent);
+            var userConfig = _yamlDeserializer.Deserialize<LspConfig>(yamlContent);
             
-            if (userConfig?.Languages == null)
+            if (userConfig?.Lsps == null)
             {
                 _logger.LogWarning("User configuration file exists but contains no languages section");
-                return new Dictionary<string, LanguageProfile>();
+                return new Dictionary<string, LspProfile>();
             }
 
             _logger.LogInformation("Loaded user configuration from {Path}", userConfigPath);
-            return userConfig.Languages;
+            return userConfig.Lsps;
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to load user configuration from {Path}", userConfigPath);
-            return new Dictionary<string, LanguageProfile>();
+            return new Dictionary<string, LspProfile>();
         }
     }
 
     /// <inheritdoc />
-    public Dictionary<string, LanguageProfile> GetBuiltInProfiles()
+    public Dictionary<string, LspProfile> GetBuiltInProfiles()
     {
         // Built-in profiles that are always available
-        return new Dictionary<string, LanguageProfile>
+        return new Dictionary<string, LspProfile>
         {
             ["csharp"] = new()
             {
                 Command = "Microsoft.CodeAnalysis.LanguageServer --logLevel=Information --stdio",
-                Extensions = [".cs", ".csproj", ".sln"],
-                WorkspaceFiles = ["*.sln", "*.csproj"]
+                Extensions = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+                {
+                    { ".cs", "csharp" },
+                    { ".csx", "csharp" },
+                    { ".cake", "csharp" },
+                    { ".cshtml", "razor" },
+                    { ".razor", "razor" }
+                },
+                WorkspaceFiles = ["*.sln", "*.csproj", "global.json"],
+                Diagnostics = DiagnosticsSettings.PullDefaults
             }
         };
     }
 
     /// <inheritdoc />
-    public Task<Dictionary<string, LanguageProfile>> LoadPackageDefaultsAsync()
+    public Task<Dictionary<string, LspProfile>> LoadPackageDefaultsAsync()
     {
         // In the future, this will load embedded YAML resources from specific language packages
         // For now, return empty - package defaults will be added when we create LspUse.Csharp, LspUse.Typescript packages
@@ -81,14 +89,14 @@ public class YamlLanguageConfigurationLoader : ILanguageConfigurationLoader
             var packageDefaultsYaml = GetPackageDefaultsYaml();
             if (string.IsNullOrWhiteSpace(packageDefaultsYaml))
             {
-                return Task.FromResult(new Dictionary<string, LanguageProfile>());
+                return Task.FromResult(new Dictionary<string, LspProfile>());
             }
 
-            var packageConfig = _yamlDeserializer.Deserialize<LanguageConfig>(packageDefaultsYaml);
-            if (packageConfig?.Languages != null)
+            var packageConfig = _yamlDeserializer.Deserialize<LspConfig>(packageDefaultsYaml);
+            if (packageConfig?.Lsps != null)
             {
-                _logger.LogDebug("Loaded {Count} package default profiles", packageConfig.Languages.Count);
-                return Task.FromResult(packageConfig.Languages);
+                _logger.LogDebug("Loaded {Count} package default profiles", packageConfig.Lsps.Count);
+                return Task.FromResult(packageConfig.Lsps);
             }
         }
         catch (Exception ex)
@@ -96,7 +104,7 @@ public class YamlLanguageConfigurationLoader : ILanguageConfigurationLoader
             _logger.LogWarning(ex, "Failed to parse package default configuration, skipping");
         }
 
-        return Task.FromResult(new Dictionary<string, LanguageProfile>());
+        return Task.FromResult(new Dictionary<string, LspProfile>());
     }
 
     /// <summary>
@@ -109,7 +117,7 @@ public class YamlLanguageConfigurationLoader : ILanguageConfigurationLoader
             ".config",
             "lsp-use");
         
-        return Path.Combine(configDir, "languages.yaml");
+        return Path.Combine(configDir, "lsps.yaml");
     }
 
     /// <summary>
