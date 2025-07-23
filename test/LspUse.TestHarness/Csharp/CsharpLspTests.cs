@@ -1,5 +1,6 @@
 using LspUse.LanguageServerClient;
 using LspUse.LanguageServerClient.Models;
+using LspUse.TestHarness.Csharp;
 using Xunit.Abstractions;
 
 namespace LspUse.TestHarness;

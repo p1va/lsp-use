@@ -47,6 +47,12 @@ public record LspProfile
     public DiagnosticsSettings? Diagnostics { get; init; }
 
     /// <summary>
+    /// Symbol filtering settings for this LSP profile.
+    /// Controls how symbols are filtered when using get_symbols operations.
+    /// </summary>
+    public SymbolsSettings? Symbols { get; init; }
+
+    /// <summary>
     /// Gets the LSP language identifier for a specific file extension.
     /// </summary>
     /// <param name="extension">The file extension (e.g., ".ts", ".jsx")</param>
@@ -132,12 +138,12 @@ public record LspProfile
     {
         var tokens = new List<string>();
         var currentToken = new StringBuilder();
-        bool inQuotes = false;
-        bool escapeNext = false;
+        var inQuotes = false;
+        var escapeNext = false;
 
-        for (int i = 0; i < commandLine.Length; i++)
+        for (var i = 0; i < commandLine.Length; i++)
         {
-            char c = commandLine[i];
+            var c = commandLine[i];
 
             if (escapeNext)
             {
@@ -233,4 +239,45 @@ public enum DiagnosticStrategy
     /// Used by language servers like TypeScript that push diagnostics automatically.
     /// </summary>
     Push
+}
+
+/// <summary>
+/// Symbol filtering configuration for LSP servers.
+/// Controls which symbols are returned by get_symbols operations.
+/// </summary>
+public record SymbolsSettings
+{
+    /// <summary>
+    /// Maximum depth of symbols to return. 
+    /// 0 = only top-level symbols (no container)
+    /// 1 = top-level + first level nested symbols
+    /// null = no depth filtering (return all symbols)
+    /// </summary>
+    public int? MaxDepth { get; init; } = null;
+
+    /// <summary>
+    /// List of symbol kinds to include in results.
+    /// If null or empty, all kinds are included.
+    /// Example: ["Function", "Class", "Interface", "Enum", "Variable"]
+    /// </summary>
+    public string[]? Kinds { get; init; }
+
+    /// <summary>
+    /// Gets the default symbols settings (no filtering).
+    /// </summary>
+    public static SymbolsSettings Default => new()
+    {
+        MaxDepth = null,
+        Kinds = null
+    };
+
+    /// <summary>
+    /// Gets symbols settings optimized for code exploration (filtered).
+    /// Returns only top-level functions, classes, interfaces, enums, and variables.
+    /// </summary>
+    public static SymbolsSettings ExplorationDefaults => new()
+    {
+        MaxDepth = 0,
+        Kinds = ["Function", "Class", "Interface", "Enum", "Variable"]
+    };
 }

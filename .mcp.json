@@ -7,10 +7,9 @@
     "csharp": {
       "command": "lsp-use",
       "args": [
-        "--language",
-        "vscode-csharp",
-        "--sln",
-        "lsp-use.sln"
+        "--lsp", "csharp",
+        "--sln", "lsp-use.sln",
+        "--log-level=Trace"
       ]
     }
   }

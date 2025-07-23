@@ -7,10 +7,11 @@ You are working on `lsp-use`: a C# codebase for a MCP (Model Context Protocol) s
 - `dotnet build` builds the solution
 - `dotnet test` runs all the tests
 - `dotnet test LspUse.TestHarness` runs a specific test
+- `dotnet format` fixes lint
 
 **just**
 - `just` to list all of the recipes available
-- `just reinstall` to rebuild from source and install the tool. Use this when wanting to get access to the latest changes in the tools. ALWAYS ask the user to restart the session to make sure the new functionalities are available
+- `just reinstall` to rebuild from source and install the tool. After that you can invoke the tool via `use-lsp` command. If instead you need to test the latest changes via MCP invokation ask the user to restart the session to make sure the new functionalities are available.
 
 # Git Workflow
 All development should be done on feature branches rather than directly on main. Follow this workflow:
@@ -38,19 +39,18 @@ EOF
 6) `gh pr view --web` to open the PR in the browser
 
 # Tool usage policy Addendum
-- Use `mcp__csharp__search_symbols` as your first choice when searching for symbol names or portions of them for example`ApplicationService` or `Async`. Default to your usual search tool when no matches
-- Use `mcp__csharp__get_symbols` as your first choice over the Read tool when you are interested in understanding the code structure over its raw content. This is much faster than reading entire files when exploring APIs.
-- Use `mcp__csharp__get_diagnostics` on a file after making edits to it to retrieve any `Error`s that migth have been introduced with the change. Address `Error`s while keeping track of other severities to be highlighted in your final response.
+- Use `mcp__csharp__search_symbols` as your first choice when searching for symbol names for example`ApplicationService` or `Async`. Default to your usual search tool when if no matches. Avoid using for plain text search like searches for "TODO" or comments
+- Use `mcp__csharp__get_symbols` as your first choice over the Read tool when opening a code file. This is much faster than reading entire files when exploring APIs. It will give you an overview of the code structure over its raw content. Proceed with Read tool when in need for details.
 - Use `mcp__csharp__get_diagnostics` on a file after making edits to it to retrieve any `Error`s that migth have been introduced with the change. Address `Error`s while keeping track of other severities to be highlighted in your final response.
 - Use `mcp__csharp__rename_symbol` when you want to rename a symbol and all of its references over multiple files
 - Use these tools for code navigation:
+  - **IMPORTANT**: Position precision matters! Click EXACTLY on the symbol you want to navigate to. Clicking on parameters, string literals, or whitespace will take you to their type definitions (e.g., String class) instead of the intended symbol. For example, clicking on `RootCommand` in `new RootCommand("description")` should be on the actual word "RootCommand", not on the string parameter.
   - Use `mcp__csharp__find_references` for finding all of athe symbol references in the codebase
   - Use `mcp__csharp__go_to_definition` to retrieve the location of where the symbol is declared. This could be a decompiled file outside of the codebase for symbols imported via Nuget.
   - Use `mcp__csharp__go_to_type_definition` to retreive the location of where the symbol's type is declared
   - Use `mcp__csharp__go_to_implementation` to retrieve the locations of implementations of a given symbol e.g. all symbols implementing an interface
-  - **IMPORTANT**: Position precision matters! Click EXACTLY on the symbol you want to navigate to. Clicking on parameters, string literals, or whitespace will take you to their type definitions (e.g., String class) instead of the intended symbol. For example, clicking on `RootCommand` in `new RootCommand("description")` should be on the actual word "RootCommand", not on the string parameter.
-- When unsure which symbols (e.g. Properties, Methods) are available use a combination of Code Navigation tools to reach the definition e.g `mcp__csharp__go_to_definition` and then parse its symbols via `mcp__csharp__get_symbols` to retrieve available Methods, Properties, etc
-- Use `mcp__microsoft-docs__microsoft_docs_search` for researching Microsoft/Azure documentation when working with MSBuild, NuGet packaging, .NET SDK features, or other Microsoft technologies. This tool provides authoritative answers from official documentation and can save significant time when troubleshooting build issues or implementing advanced MSBuild scenarios.
+- When dealing with symbols you don't know already like other classes or Nuget references or Framework dependencies use a combination of Code Navigation tools to inspect their definition and find their symbols.Use `mcp__csharp__go_to_definition` and then parse the file with `mcp__csharp__get_symbols`. This will give you  available Methods with their signature, Properties, etc
+- Use `mcp__microsoft-docs__microsoft_docs_search` for researching Microsoft documentation when working with MSBuild, NuGet packaging, .NET SDK features, or other Microsoft technologies. This tool provides authoritative answers from official documentation and can save significant time when troubleshooting build issues or implementing advanced MSBuild scenarios.
 
 ### Available MCP Tools
 

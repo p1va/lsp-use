@@ -10,5 +10,6 @@ public enum ErrorCode
     /// once the <c>workspace/projectInitializationComplete</c> notification is
     /// received.
     /// </summary>
-    WorkspaceLoadInProgress = 1
+    WorkspaceLoadInProgress = 1,
+    NotFound = 2,
 }

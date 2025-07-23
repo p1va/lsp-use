@@ -60,8 +60,8 @@ public class LspProfileResolver
             return null;
 
         var allProfiles = _customProfiles.Concat(_builtInProfiles)
-            .Where(kvp => kvp.Value.WorkspaceFiles != null || 
-                         kvp.Value.Extensions != null || 
+            .Where(kvp => kvp.Value.WorkspaceFiles != null ||
+                         kvp.Value.Extensions != null ||
                          kvp.Value.LegacyExtensions != null);
 
         foreach (var (lspName, profile) in allProfiles)

@@ -1,5 +1,6 @@
 using LspUse.LanguageServerClient;
 using LspUse.LanguageServerClient.Models;
+using LspUse.TestHarness.Pyright;
 using Xunit.Abstractions;
 
 namespace LspUse.TestHarness;
@@ -10,7 +11,7 @@ public class PythonLspTests(ITestOutputHelper output)
     public async Task PythonDiagnosticsPush()
     {
         // Use a file that's actually part of the project instead of TestSources
-        var fileUri = new Uri("/home/truelayer/Repo/tool-api/main.py");
+        var fileUri = new Uri("/path/to/file.py");
 
         await using var ctx = await PythonLspTestHelpers.StartAsync(output);
 
@@ -18,24 +19,24 @@ public class PythonLspTests(ITestOutputHelper output)
         var text = await File.ReadAllTextAsync(fileUri.LocalPath);
 
         await ctx.Client.DidOpenAsync(new DidOpenTextDocumentParams
+        {
+            TextDocument = new TextDocumentItem
             {
-                TextDocument = new TextDocumentItem
-                {
-                    Uri = fileUri,
-                    LanguageId = "python",
-                    Version = 1,
-                    Text = text,
-                },
-            }
+                Uri = fileUri,
+                LanguageId = "python",
+                Version = 1,
+                Text = text,
+            },
+        }
         );
 
         await Task.Delay(3_000);
 
         var response = await ctx.Client.DiagnosticAsync(new TextDocumentDiagnosticParams
-            {
-                TextDocument = fileUri.ToDocumentIdentifier(),
-                Identifier = "pyright",
-            }
+        {
+            TextDocument = fileUri.ToDocumentIdentifier(),
+            Identifier = "pyright",
+        }
         );
 
         output.WriteLine("--- Diagnostics ---");
@@ -58,7 +59,7 @@ public class PythonLspTests(ITestOutputHelper output)
     public async Task PythonHover()
     {
         // Use a file that's actually part of the project instead of TestSources
-        var fileUri = new Uri("/home/truelayer/Repo/tool-api/main.py");
+        var fileUri = new Uri("/path/to/repo");
 
         await using var ctx = await PythonLspTestHelpers.StartAsync(output);
 
@@ -66,24 +67,24 @@ public class PythonLspTests(ITestOutputHelper output)
         var text = await File.ReadAllTextAsync(fileUri.LocalPath);
 
         await ctx.Client.DidOpenAsync(new DidOpenTextDocumentParams
+        {
+            TextDocument = new TextDocumentItem
             {
-                TextDocument = new TextDocumentItem
-                {
-                    Uri = fileUri,
-                    LanguageId = "python",
-                    Version = 1,
-                    Text = text,
-                },
-            }
+                Uri = fileUri,
+                LanguageId = "python",
+                Version = 1,
+                Text = text,
+            },
+        }
         );
 
         await Task.Delay(3_000);
 
         var response = await ctx.Client.HoverAsync(new DocumentClientRequest
-            {
-                Document = fileUri,
-                Position = (154u, 8u).ToZeroBasedPosition(),
-            }
+        {
+            Document = fileUri,
+            Position = (154u, 8u).ToZeroBasedPosition(),
+        }
         );
 
         output.WriteLine("--- Hover ---");

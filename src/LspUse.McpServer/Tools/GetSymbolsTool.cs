@@ -16,7 +16,8 @@ public static class GetSymbolsTool
     public static async Task<IEnumerable<DocumentSymbol>> GetDocumentSymbolsAsync(
         IApplicationService service, ILoggerFactory loggerFactory,
         [Description("The path of the file to extract symbols from")] string file,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        [Description("Optional maximum depth of symbols to return. 0 = only top-level symbols, 1 = top-level + first nested level, etc. If not specified, uses LSP profile default.")] int? maxDepth = null)
     {
         var logger = loggerFactory.CreateLogger("DocumentSymbolsTool");
 
@@ -24,7 +25,8 @@ public static class GetSymbolsTool
 
         var result = await service.GetDocumentSymbolsAsync(new GetSymbolsRequest
         {
-            FilePath = file
+            FilePath = file,
+            MaxDepth = maxDepth
         }, cancellationToken);
 
         return result.Match<IEnumerable<DocumentSymbol>>(

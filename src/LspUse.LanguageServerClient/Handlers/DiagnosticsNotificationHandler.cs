@@ -1,30 +1,28 @@
 using System.Collections.Concurrent;
 using LspUse.LanguageServerClient.Models;
+using Microsoft.Extensions.Logging;
 using StreamJsonRpc;
 
 namespace LspUse.LanguageServerClient.Handlers;
 
-/// <summary>
-/// Handles <c>textDocument/publishDiagnostics</c> notifications.
-/// Keeps track of the latest diagnostics per document URI.
-/// </summary>
-public sealed class DiagnosticsNotificationHandler : ILspNotificationHandler
+public sealed class DiagnosticsNotificationHandler(ILogger<DiagnosticsNotificationHandler> logger)
+    : ILspNotificationHandler
 {
-    /// <summary>
-    /// Gets a thread-safe map from document <see cref="Uri"/> to the last
-    /// <see cref="PublishDiagnosticParams"/> received for that document.
-    /// </summary>
     public ConcurrentDictionary<Uri, DiagnosticNotification> LatestDiagnostics { get; } = new();
 
-    /// <summary>
-    /// Receives a <c>textDocument/publishDiagnostics</c> notification.
-    /// </summary>
-    /// <param name="parameters">The diagnostics information.</param>
     [JsonRpcMethod("textDocument/publishDiagnostics",
-        UseSingleObjectParameterDeserialization = true)]
+        UseSingleObjectParameterDeserialization = true
+    )]
     public void OnPublishDiagnostics(DiagnosticNotification parameters)
     {
+        logger.LogDebug("[Notification] {Count} diagnostics for file [v{Version}] {File}",
+            parameters.Diagnostics?.Count() ?? 0,
+            parameters.Version,
+            parameters.Uri
+        );
+
         // If diagnostics are cleaned then we receive URI with empty diagnostics
-        if (parameters.Uri is not null) LatestDiagnostics[parameters.Uri] = parameters;
+        if (parameters.Uri is not null)
+            LatestDiagnostics[parameters.Uri] = parameters;
     }
 }

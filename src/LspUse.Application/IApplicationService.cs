@@ -1,4 +1,5 @@
 using LspUse.Application.Models;
+using LspUse.LanguageServerClient.Handlers;
 using OneOf;
 
 namespace LspUse.Application;
@@ -42,6 +43,10 @@ public interface IApplicationService : IAsyncDisposable
 
     Task<OneOf<RenameSymbolSuccess, ApplicationServiceError>> RenameSymbolAsync(
         RenameSymbolRequest request, CancellationToken cancellationToken = default);
+
+    DefaultNotificationHandler? GetDefaultNotificationHandler();
+
+    DefaultRequestHandler? GetDefaultRequestHandler();
 
     Task ShutdownAsync(CancellationToken cancellationToken = default);
 }

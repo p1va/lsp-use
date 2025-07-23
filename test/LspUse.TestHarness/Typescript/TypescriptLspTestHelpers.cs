@@ -21,7 +21,7 @@ internal static class TypescriptLspTestHelpers
         // Launch server process -----------------------------
         var psi = new ProcessStartInfo
         {
-            FileName = "/home/truelayer/.local/share/pnpm/typescript-language-server",
+            FileName = "typescript-language-server",
             UseShellExecute = false,
             RedirectStandardInput = true,
             RedirectStandardOutput = true,
@@ -75,7 +75,7 @@ internal static class TypescriptLspTestHelpers
         var serverCapabilities = await lsp.InitializeAsync(new
         {
             processId = Environment.ProcessId,
-            rootUri = new Uri("/home/truelayer/Repo/app-link-explorer/"),
+            rootUri = new Uri("/path/to/repo"),
             capabilities = new
             {
                 workspace = new

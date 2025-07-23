@@ -6,7 +6,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using StreamJsonRpc;
 using Xunit.Abstractions;
 
-namespace LspUse.TestHarness;
+namespace LspUse.TestHarness.Pyright;
 
 internal static class PythonLspTestHelpers
 {
@@ -62,47 +62,49 @@ internal static class PythonLspTestHelpers
         rpc.StartListening();
 
         var lsp = new JsonRpcLspClient(rpc);
-        
+
+        const string repo = "/path/to/repo";
+
         var serverCapabilities = await lsp.InitializeAsync(new
-            {
-                processId = Environment.ProcessId,
-                rootUri = new Uri("/home/truelayer/Repo/tool-api/"),
-                workspaceFolders = new[]
+        {
+            processId = Environment.ProcessId,
+            rootUri = new Uri(repo),
+            workspaceFolders = new[]
                 {
                     new
                     {
-                        uri = new Uri("/home/truelayer/Repo/tool-api/"),
-                        name = "/home/truelayer/Repo/tool-api/",
+                        uri = new Uri(repo),
+                        name = repo,
                     },
                 },
-                capabilities = new
+            capabilities = new
+            {
+                workspace = new
                 {
-                    workspace = new
+                },
+                textDocument = new
+                {
+                    publishDiagnostics = new
                     {
+                        relatedInformation = true,
+                        versionSupport = true,
+                        codeDescriptionSupport = true,
+                        dataSupport = true,
                     },
-                    textDocument = new
+                    diagnostic = new
                     {
-                        publishDiagnostics = new
-                        {
-                            relatedInformation = true,
-                            versionSupport = true,
-                            codeDescriptionSupport = true,
-                            dataSupport = true,
-                        },
-                        diagnostic = new
-                        {
-                            dynamicRegistration = true,
-                            relatedDocumentSupport = true,
-                        },
+                        dynamicRegistration = true,
+                        relatedDocumentSupport = true,
                     },
                 },
-            }
+            },
+        }
         );
 
         // empty params per LSP
         await lsp.InitializedAsync(new
-            {
-            }
+        {
+        }
         );
 
         return new LspTestContext(rpc,

@@ -1,25 +1,27 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <!-- Dotnet tool -->
-    <OutputType>Exe</OutputType>
-    <PackAsTool>true</PackAsTool>
-    <ToolCommandName>lsp-use</ToolCommandName>
-
-    <!-- For nuget discovery -->
-    <PackageType>McpServer</PackageType>
-    <PackageTags>AI; MCP; server; stdio</PackageTags>
-    <Description>An MCP server to bring the C# Language Server to LLMs.</Description>
-
-    <PackageOutputPath>./nupkg</PackageOutputPath>
-    <!-- or ../.. -->
-    <PackageReadmeFile>README.md</PackageReadmeFile>
-
     <!-- PackageId becomes LspUse.Csharp.linux-x64 in CI -->
     <PackageBaseId Condition="'$(PackageBaseId)'==''">LspUse.Csharp</PackageBaseId>
     <PackageId>$(PackageBaseId).$(RuntimeIdentifier)</PackageId>
     <PackageVersion>$(PackageVersion)</PackageVersion>
+    <!-- Ensure assembly version matches package version for version option -->
+    <Version>$(PackageVersion)</Version>
 
+    <!-- For nuget discovery -->
+    <PackageType>McpServer</PackageType>
+    <PackageTags>AI;MCP;ModelContextProtocol;server;stdio</PackageTags>
+    <Description>An MCP server to bring the C# Language Server to LLMs.</Description>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+
+    <!-- Dotnet tool -->
+    <OutputType>Exe</OutputType>
+    <PackAsTool>true</PackAsTool>
+    <IsPackable>true</IsPackable>
+    <ToolCommandName>lsp-use</ToolCommandName>
+
+    <PackageOutputPath>./nupkg</PackageOutputPath>
+    
     <!-- Suppress NuGet warnings for LSP assemblies that are not references -->
     <NoWarn>$(NoWarn);NU5100;NU5118</NoWarn>
 
@@ -27,17 +29,17 @@
 
   <!-- Project references -->
   <ItemGroup>
-    <ProjectReference Include="..\LspUse.Application\LspUse.Application.csproj" />
+    <ProjectReference Include="..\LspUse.Application\LspUse.Application.csproj"/>
   </ItemGroup>
 
   <!-- Dependencies -->
   <ItemGroup>
-    <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="10.0.0-preview.6.25358.103" />
-    <PackageReference Include="OneOf" Version="3.0.271" />
-    <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.0-preview.6.25358.103" />
-    <PackageReference Include="ModelContextProtocol" Version="0.3.0-preview.3" />
-    <PackageReference Include="System.CommandLine" Version="2.0.0-beta6.25358.103" />
-    <PackageReference Include="YamlDotNet" Version="16.3.0" />
+    <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="10.0.0-preview.6.25358.103"/>
+    <PackageReference Include="OneOf" Version="3.0.271"/>
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.0-preview.6.25358.103"/>
+    <PackageReference Include="ModelContextProtocol" Version="0.3.0-preview.3"/>
+    <PackageReference Include="System.CommandLine" Version="2.0.0-beta6.25358.103"/>
+    <PackageReference Include="YamlDotNet" Version="16.3.0"/>
   </ItemGroup>
 
   <!-- Embedded LSP binaries inside nupkg -->
@@ -56,9 +58,9 @@
 
   <!-- Generate the MCP server JSON file -->
   <Target Name="GenerateMcpServerJson" BeforeTargets="IncludeGeneratedJsonInPackage">
-    <Message Text="PackageId: $(PackageId)" Importance="high" />
-    <Message Text="PackageVersion: $(PackageVersion)" Importance="high" />
-    
+    <Message Text="PackageId: $(PackageId)" Importance="high"/>
+    <Message Text="PackageVersion: $(PackageVersion)" Importance="high"/>
+
     <PropertyGroup>
       <JsonTemplateFile>$(MSBuildProjectDirectory)/.mcp/server.json.template</JsonTemplateFile>
       <JsonOutputFile>$(MSBuildProjectDirectory)/.mcp/server.json</JsonOutputFile>
@@ -66,8 +68,8 @@
       <JsonContent>$(JsonContent.Replace('{{PackageId}}', $(PackageId)))</JsonContent>
       <JsonContent>$(JsonContent.Replace('{{PackageVersion}}', $(PackageVersion)))</JsonContent>
     </PropertyGroup>
-    
-    <WriteLinesToFile File="$(JsonOutputFile)" Lines="$(JsonContent)" Overwrite="true" />
+
+    <WriteLinesToFile File="$(JsonOutputFile)" Lines="$(JsonContent)" Overwrite="true"/>
   </Target>
 
   <!-- Include the generated JSON file in the package -->
@@ -82,9 +84,9 @@
   <!-- Include additional files for browsing the MCP server. -->
   <ItemGroup>
     <!-- Solution README -->
-    <None Include="..\..\README.md" Pack="true" PackagePath="/" />
+    <None Include="..\..\README.md" Pack="true" PackagePath="/"/>
     <!-- Template for MCP Server JSON -->
-    <None Include=".mcp\server.json.template" />
+    <None Include=".mcp\server.json.template"/>
   </ItemGroup>
 
 

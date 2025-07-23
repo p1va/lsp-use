@@ -13,6 +13,9 @@ public record DocumentSymbol
     [JsonPropertyName("container")]
     public string? ContainerName { get; init; }
 
+    [JsonPropertyName("depth")]
+    public int Depth { get; init; }
+
     [JsonPropertyName("location")]
     public SymbolLocation? Location { get; set; }
 }

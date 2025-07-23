@@ -1,5 +1,6 @@
 namespace LspUse.LanguageServerClient.Models;
 
+using System.Text.Json;
 using System.Text.Json.Serialization;
 
 public record DiagnosticNotification
@@ -52,7 +53,10 @@ public record Diagnostic
     [JsonPropertyName("message")]
     public string? Message { get; init; }
 
+    // C# would return a string e.g. "CS1234"
+    // Typescript would return a number 6133
     [JsonPropertyName("code")]
+    [JsonConverter(typeof(DiagnosticCodeConverter))]
     public string? Code { get; init; }
 
     [JsonPropertyName("codeDescription")]
@@ -74,6 +78,39 @@ public enum DiagnosticSeverity
     Warning = 2,
     Information = 3,
     Hint = 4
+}
+
+/// <summary>
+/// Custom JSON converter that handles diagnostic codes which can be either strings (C#) or integers (TypeScript)
+/// </summary>
+public class DiagnosticCodeConverter : JsonConverter<string?>
+{
+    public override string? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+    {
+        switch (reader.TokenType)
+        {
+            case JsonTokenType.String:
+                return reader.GetString();
+            case JsonTokenType.Number:
+                return reader.GetInt32().ToString();
+            case JsonTokenType.Null:
+                return null;
+            default:
+                throw new JsonException($"Unexpected token type {reader.TokenType} for diagnostic code");
+        }
+    }
+
+    public override void Write(Utf8JsonWriter writer, string? value, JsonSerializerOptions options)
+    {
+        if (value == null)
+        {
+            writer.WriteNullValue();
+        }
+        else
+        {
+            writer.WriteStringValue(value);
+        }
+    }
 }
 
 

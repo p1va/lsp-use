@@ -10,8 +10,20 @@ public record InitializeParams
     [JsonPropertyName("rootUri")]
     public required Uri RootUri { get; init; }
 
+    [JsonPropertyName("workspaceFolders")]
+    public required WorkspaceFolder[] WorkspaceFolders { get; init; }
+
     [JsonPropertyName("capabilities")]
     public required ClientCapabilities Capabilities { get; init; }
+}
+
+public record WorkspaceFolder
+{
+    [JsonPropertyName("name")]
+    public required string Name { get; init; }
+
+    [JsonPropertyName("uri")]
+    public required Uri Uri { get; init; }
 }
 
 public record ClientCapabilities

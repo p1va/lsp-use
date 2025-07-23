@@ -13,7 +13,7 @@ public class TypescriptLspTests
     public async Task TypescriptDiagnosticsPush()
     {
         // Use a file that's actually part of the project instead of TestSources
-        var fileUri = new Uri("/home/truelayer/Repo/app-link-explorer/app/actions.ts");
+        var fileUri = new Uri("/path/to/file.ts");
 
         await using var ctx = await TypescriptLspTestHelpers.StartAsync(_output);
 
@@ -39,12 +39,12 @@ public class TypescriptLspTests
         {
             _output.WriteLine($"--- {d.Value.Diagnostics?.Count() ?? 0} Diagnostics in file {d.Value.Uri}");
 
-            foreach (var c in d.Value?.Diagnostics ??[])
+            foreach (var c in d.Value?.Diagnostics ?? [])
             {
                 _output.WriteLine($"--- [{c.Severity}] {c.Code}: {c.Message}");
             }
         }
 
-        
+
     }
 }

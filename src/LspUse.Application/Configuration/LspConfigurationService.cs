@@ -32,12 +32,12 @@ public class LspConfigurationService
         var packageDefaults = await _configurationLoader.LoadPackageDefaultsAsync();
         var customProfiles = await _configurationLoader.LoadCustomProfilesAsync();
 
-        _logger.LogDebug("Loaded {BuiltInCount} built-in, {PackageCount} package default, {CustomCount} custom LSP profiles", 
+        _logger.LogDebug("Loaded {BuiltInCount} built-in, {PackageCount} package default, {CustomCount} custom LSP profiles",
             builtInProfiles.Count, packageDefaults.Count, customProfiles.Count);
 
         // Apply configuration hierarchy: Built-in < Package Defaults < Custom
         var mergedProfiles = new Dictionary<string, LspProfile>(builtInProfiles);
-        
+
         // Package defaults override built-ins
         foreach (var (key, profile) in packageDefaults)
         {
