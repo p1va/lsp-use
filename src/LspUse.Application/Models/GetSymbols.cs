@@ -3,7 +3,7 @@ namespace LspUse.Application.Models;
 public record GetSymbolsRequest
 {
     public required string FilePath { get; init; }
-    
+
     /// <summary>
     /// Optional maximum depth override for this request.
     /// If null, uses the default depth from LSP profile configuration.

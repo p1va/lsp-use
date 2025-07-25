@@ -32,6 +32,10 @@ lsps:
     symbols:
       max_depth: null               # Show all nesting levels (good for exploring TS/JS structure)
       kinds: ["Function", "Class", "Variable", "Enum", "Interface", "Module"]
+    # Optional: Environment variables for the TypeScript LSP process
+    # environment:
+    #   NODE_OPTIONS: "--max-old-space-size=4096"
+    #   TSC_COMPILE_ON_ERROR: "true"
 
   # ==============================================================================
   # .NET Ecosystem - C#
@@ -62,9 +66,28 @@ lsps:
     diagnostics:
       strategy: "pull"              # Pyright uses pull diagnostics
     symbols:
-      max_depth: 0                  # Only top-level symbols (reduces noise in Python)
+      max_depth: 0                  # Only top-level symbols (reduces noise in Python)  
       kinds: ["Function", "Class", "Variable"]
 
+  # ==============================================================================
+  # Go Ecosystem (gopls)
+  # ==============================================================================
+  go:
+    command: "gopls"
+    extensions:
+      ".go": "go"
+    workspace_files: ["go.mod", "go.work"]
+    diagnostics:
+      strategy: "pull"              # Go uses pull diagnostics
+    symbols:
+      max_depth: null               # Show all symbols (Go has clean structure)
+      kinds: ["Function", "Class", "Variable", "Interface", "Module"]
+    # Environment variables needed for Go development
+    environment:
+      GOPATH: "/usr/local/go/bin/go"
+      GOCACHE: "/home/your/.cache/go-build/"
+      GOMODCACHE: "/home/your/go/pkg/mod/"
+      
 # ==============================================================================
 # Symbol Filtering Configuration:
 # ==============================================================================
@@ -105,6 +128,24 @@ lsps:
 # This gives you both sensible defaults and flexible per-request control.
 
 # ==============================================================================
+# Environment Variables Configuration:
+# ==============================================================================
+# All LSP profiles support environment variables that are set in the LSP process:
+#
+# environment:
+#   VAR_NAME: "value"
+#   ANOTHER_VAR: "another_value"
+#
+# Common use cases:
+# - Go: GOPATH, GO111MODULE, GOPROXY, GOSUMDB
+# - Node.js: NODE_OPTIONS, NODE_ENV, NODE_PATH  
+# - Python: PYTHONPATH, VIRTUAL_ENV, PIP_INDEX_URL
+# - Java: JAVA_HOME, MAVEN_OPTS, GRADLE_OPTS
+# - Rust: CARGO_HOME, RUSTUP_HOME
+#
+# Environment variables are applied before starting the LSP server process.
+
+# ==============================================================================
 # Installation Instructions:
 # ==============================================================================
 # 
@@ -116,5 +157,8 @@ lsps:
 #
 # Python (Pyright):
 #   npm install -g pyright
+#
+# Go (gopls):
+#   go install golang.org/x/tools/gopls@latest
 #
 # Then place this file at ~/.config/lsp-use/lsps.yaml and configure your MCP

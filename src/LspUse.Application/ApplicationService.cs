@@ -91,6 +91,15 @@ public class ApplicationService : IApplicationService
         foreach (var arg in _config.Arguments ?? [])
             processStartInfo.ArgumentList.Add(arg);
 
+        // Add environment variables from configuration
+        if (_config.Environment != null)
+        {
+            foreach (var envVar in _config.Environment)
+            {
+                processStartInfo.Environment.Add(envVar.Key, envVar.Value);
+            }
+        }
+
         // TBD whether this is needed on linux
         processStartInfo.Environment.Add("DOTNET_USE_POLLING_FILE_WATCHER", "true");
 
@@ -197,8 +206,8 @@ public class ApplicationService : IApplicationService
         );
 
         await _languageServer.InitializedAsync(new
-            {
-            },
+        {
+        },
             cancellationToken
         );
 
@@ -277,10 +286,10 @@ public class ApplicationService : IApplicationService
                 {
                     var references = await LanguageServer
                         .ReferencesAsync(new DocumentClientRequest
-                            {
-                                Document = fileUri,
-                                Position = request.Position.ToZeroBased(),
-                            },
+                        {
+                            Document = fileUri,
+                            Position = request.Position.ToZeroBased(),
+                        },
                             cancellationToken
                         );
 
@@ -329,10 +338,10 @@ public class ApplicationService : IApplicationService
                 async (fileUri) =>
                 {
                     var definitions = await LanguageServer.DefinitionAsync(new DocumentClientRequest
-                        {
-                            Document = fileUri,
-                            Position = request.Position.ToZeroBased(),
-                        },
+                    {
+                        Document = fileUri,
+                        Position = request.Position.ToZeroBased(),
+                    },
                         cancellationToken
                     );
 
@@ -566,10 +575,10 @@ public class ApplicationService : IApplicationService
             await OpenFileOnLspAsync(absoluteFileUri, cancellationToken);
 
             var hover = await LanguageServer.HoverAsync(new DocumentClientRequest
-                {
-                    Document = absoluteFileUri,
-                    Position = request.Position.ToZeroBased(),
-                },
+            {
+                Document = absoluteFileUri,
+                Position = request.Position.ToZeroBased(),
+            },
                 cancellationToken
             );
 
@@ -620,12 +629,12 @@ public class ApplicationService : IApplicationService
 
             var documentSymbols = matchingSymbols
                 .Select(s => new DocumentSymbol
-                    {
-                        Name = s.Name ?? string.Empty,
-                        Kind = s.Kind?.ToString() ?? "Unknown",
-                        ContainerName = s.ContainerName,
-                        Location = s.Location?.ToSymbolLocation(),
-                    }
+                {
+                    Name = s.Name ?? string.Empty,
+                    Kind = s.Kind?.ToString() ?? "Unknown",
+                    ContainerName = s.ContainerName,
+                    Location = s.Location?.ToSymbolLocation(),
+                }
                 )
                 .ToList();
 
@@ -759,15 +768,15 @@ public class ApplicationService : IApplicationService
 
         // Open file on the LSP
         await LanguageServer.DidOpenAsync(new DidOpenTextDocumentParams
+        {
+            TextDocument = new TextDocumentItem
             {
-                TextDocument = new TextDocumentItem
-                {
-                    Version = 1,
-                    Uri = fileUri,
-                    LanguageId = _languageIdMapper.MapFileToLanguageId(fileUri.LocalPath),
-                    Text = content,
-                },
+                Version = 1,
+                Uri = fileUri,
+                LanguageId = _languageIdMapper.MapFileToLanguageId(fileUri.LocalPath),
+                Text = content,
             },
+        },
             cancellationToken
         );
 
@@ -779,9 +788,9 @@ public class ApplicationService : IApplicationService
         //TODO: Do we need to check for file existance again? No don't think so
 
         await LanguageServer.DidCloseAsync(new DidCloseTextDocumentParams
-            {
-                TextDocument = fileUri.ToDocumentIdentifier(),
-            },
+        {
+            TextDocument = fileUri.ToDocumentIdentifier(),
+        },
             cancellationToken
         );
 
@@ -837,12 +846,12 @@ public class ApplicationService : IApplicationService
 
                     var symbols = documentSymbols
                         ?.Select(x => new DocumentSymbol
-                            {
-                                Name = x.Name,
-                                ContainerName = x.ContainerName,
-                                Kind = x.Kind.ToString(),
-                                Location = x.Location?.ToSymbolLocation(),
-                            }
+                        {
+                            Name = x.Name,
+                            ContainerName = x.ContainerName,
+                            Kind = x.Kind.ToString(),
+                            Location = x.Location?.ToSymbolLocation(),
+                        }
                         )
                         .ToList() ?? [];
 
@@ -881,16 +890,18 @@ public class ApplicationService : IApplicationService
 
                     // Determine effective max depth (request override takes precedence)
                     var effectiveMaxDepth = request.MaxDepth ?? symbolsSettings.MaxDepth;
-                    
+
                     // Filter by depth if specified
                     if (effectiveMaxDepth.HasValue)
                         filteredSymbols = filteredSymbols.Where(s => s.Depth <= effectiveMaxDepth.Value);
 
                     // Filter by symbol kinds
                     if (symbolsSettings.Kinds != null && symbolsSettings.Kinds.Length > 0)
+                    {
                         filteredSymbols = filteredSymbols.Where(s =>
                             symbolsSettings.Kinds.Contains(s.Kind, StringComparer.OrdinalIgnoreCase)
                         );
+                    }
 
                     return new GetSymbolsSuccess
                     {
@@ -921,39 +932,39 @@ public class ApplicationService : IApplicationService
     {
         var symbolList = symbols.ToList();
         var containerToDepthMap = new Dictionary<string, int>();
-        
+
         // Build a map of symbol name to its container for lookup
         var symbolToContainerMap = symbolList
             .Where(s => !string.IsNullOrEmpty(s.ContainerName))
             .ToLookup(s => s.Name, s => s.ContainerName!);
-        
+
         int CalculateDepth(string? containerName, HashSet<string> visited)
         {
             if (string.IsNullOrEmpty(containerName))
                 return 0;
-                
+
             if (visited.Contains(containerName))
                 return 0; // Prevent infinite recursion in case of circular references
-                
+
             if (containerToDepthMap.TryGetValue(containerName, out var cachedDepth))
                 return cachedDepth + 1;
-                
+
             visited.Add(containerName);
-            
+
             // Find the container's own container
             var parentContainer = symbolToContainerMap[containerName].FirstOrDefault();
             var depth = CalculateDepth(parentContainer, visited) + 1;
-            
+
             visited.Remove(containerName);
             containerToDepthMap[containerName] = depth - 1; // Cache the container's own depth
-            
+
             return depth;
         }
-        
+
         // Calculate depth for each symbol
-        return symbolList.Select(symbol => symbol with 
-        { 
-            Depth = CalculateDepth(symbol.ContainerName, new HashSet<string>()) 
+        return symbolList.Select(symbol => symbol with
+        {
+            Depth = CalculateDepth(symbol.ContainerName, new HashSet<string>())
         });
     }
 
@@ -1060,11 +1071,11 @@ public class ApplicationService : IApplicationService
                 async (fileUri) =>
                 {
                     var workspaceEdit = await LanguageServer.RenameAsync(new RenameParams
-                        {
-                            TextDocument = fileUri.ToDocumentIdentifier(),
-                            Position = request.Position.ToZeroBased(),
-                            NewName = request.NewName,
-                        },
+                    {
+                        TextDocument = fileUri.ToDocumentIdentifier(),
+                        Position = request.Position.ToZeroBased(),
+                        NewName = request.NewName,
+                    },
                         cancellationToken
                     );
 
@@ -1420,7 +1431,9 @@ public class ApplicationService : IApplicationService
                     var identifier = registration.RegisterOptions?.Identifier;
                     if (!string.IsNullOrEmpty(identifier) &&
                         !diagnosticProviderIds.Contains(identifier))
+                    {
                         diagnosticProviderIds.Add(identifier);
+                    }
                 }
             }
         }
@@ -1446,10 +1459,10 @@ public class ApplicationService : IApplicationService
             try
             {
                 var response = await LanguageServer.DiagnosticAsync(new TextDocumentDiagnosticParams
-                    {
-                        TextDocument = fileUri.ToDocumentIdentifier(),
-                        Identifier = identifier,
-                    },
+                {
+                    TextDocument = fileUri.ToDocumentIdentifier(),
+                    Identifier = identifier,
+                },
                     cancellationToken
                 );
 
@@ -1530,16 +1543,16 @@ public class ApplicationService : IApplicationService
             };
 
             documentDiagnostics.Add(new DocumentDiagnostic
-                {
-                    Severity = severity,
-                    StartLine = (uint)diagnostic.Range.Start.Line,
-                    StartCharacter = (uint)diagnostic.Range.Start.Character,
-                    EndLine = (uint)diagnostic.Range.End.Line,
-                    EndCharacter = (uint)diagnostic.Range.End.Character,
-                    Message = diagnostic.Message ?? string.Empty,
-                    Code = diagnostic.Code,
-                    CodeDescription = diagnostic.CodeDescription?.Href,
-                }
+            {
+                Severity = severity,
+                StartLine = (uint)diagnostic.Range.Start.Line,
+                StartCharacter = (uint)diagnostic.Range.Start.Character,
+                EndLine = (uint)diagnostic.Range.End.Line,
+                EndCharacter = (uint)diagnostic.Range.End.Character,
+                Message = diagnostic.Message ?? string.Empty,
+                Code = diagnostic.Code,
+                CodeDescription = diagnostic.CodeDescription?.Href,
+            }
             );
         }
 

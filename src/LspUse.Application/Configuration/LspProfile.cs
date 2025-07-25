@@ -53,6 +53,12 @@ public record LspProfile
     public SymbolsSettings? Symbols { get; init; }
 
     /// <summary>
+    /// Environment variables to set when starting the LSP server process.
+    /// Example: { "GOPATH": "/path/to/go/workspace", "GO111MODULE": "on" }
+    /// </summary>
+    public Dictionary<string, string>? Environment { get; init; }
+
+    /// <summary>
     /// Gets the LSP language identifier for a specific file extension.
     /// </summary>
     /// <param name="extension">The file extension (e.g., ".ts", ".jsx")</param>

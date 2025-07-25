@@ -7,8 +7,10 @@
     "csharp": {
       "command": "lsp-use",
       "args": [
-        "--lsp", "csharp",
-        "--sln", "lsp-use.sln",
+        "--lsp",
+        "csharp",
+        "--sln",
+        "lsp-use.sln",
         "--log-level=Trace"
       ]
     }
