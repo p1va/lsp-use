@@ -62,7 +62,6 @@ jobs:
           name: "LspUse.Csharp.${{ matrix.rid }}.${{ env.RELEASE_VERSION }}.nupkg"
           path: "src/LspUse.McpServer/nupkg/LspUse.Csharp.${{ matrix.rid }}.${{ env.RELEASE_VERSION }}.nupkg"
  
-
       # Push to NuGet.org (the API key must be stored as a repo secret).
       - name: Publish to NuGet
         env:

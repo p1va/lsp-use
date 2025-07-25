@@ -33,7 +33,6 @@ public static class GoToDefinitionTool
         IApplicationService service, ILoggerFactory loggerFactory,
         [Description(ToolArgDescFilePath)] string file, [Description(ToolArgDescLine)] uint line,
         [Description(ToolArgDescCharacter)] uint character,
-        [Description("Whether to include code snippets for each definition. When true, shows the actual source code for better context.")] bool showCode = false,
         CancellationToken cancellationToken = default)
     {
         var logger = loggerFactory.CreateLogger(ToolName);
@@ -61,7 +60,7 @@ public static class GoToDefinitionTool
                     return [new TextContentBlock { Text = $"Found 0 definitions for symbol at {GetRelativeFilePath(file)}:{line}:{character}" }];
                 }
 
-                return BuildDefinitionsResultText(definitions, file, line, character, showCode);
+                return BuildDefinitionsResultText(definitions, file, line, character);
             },
             error =>
             {
@@ -91,7 +90,7 @@ public static class GoToDefinitionTool
     }
 
     private static IEnumerable<TextContentBlock> BuildDefinitionsResultText(
-        IEnumerable<SymbolLocation> definitions, string originalFile, uint originalLine, uint originalCharacter, bool showCode)
+        IEnumerable<SymbolLocation> definitions, string originalFile, uint originalLine, uint originalCharacter)
     {
         var definitionList = definitions.ToList();
         var fileGroups = definitionList.GroupBy(d => d.FilePath?.ToString() ?? "Unknown")
@@ -111,7 +110,7 @@ public static class GoToDefinitionTool
             var filePath = GetRelativeFilePath(fileGroup.Key);
             var definitionsInFile = fileGroup.OrderBy(d => d.StartLine).ToList();
             
-            var fileHeader = $"\n{filePath} ({definitionsInFile.Count} definition{(definitionsInFile.Count != 1 ? "s" : "")})";
+            var fileHeader = $"{filePath} ({definitionsInFile.Count} definition{(definitionsInFile.Count != 1 ? "s" : "")})";
             
             var sb = new StringBuilder(fileHeader);
             
@@ -126,12 +125,6 @@ public static class GoToDefinitionTool
                 if (!string.IsNullOrWhiteSpace(definition.Text))
                 {
                     sb.Append($" - {definition.Text.Trim()}");
-                }
-                
-                if (showCode && !string.IsNullOrWhiteSpace(definition.Text))
-                {
-                    sb.AppendLine();
-                    sb.Append($"    Code: {definition.Text.Trim()}");
                 }
             }
             

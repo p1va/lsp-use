@@ -573,7 +573,41 @@ public class ApplicationService : IApplicationService
             EnsureFileExists(request.FilePath, out var absoluteFileUri);
 
             await OpenFileOnLspAsync(absoluteFileUri, cancellationToken);
-
+            
+            // First, get document symbols to find what symbol was clicked
+            DocumentSymbol? clickedSymbol = null;
+            try
+            {
+                var documentSymbols = await LanguageServer.DocumentSymbolAsync(
+                    new DocumentSymbolParams
+                    {
+                        TextDocument = absoluteFileUri.ToDocumentIdentifier(),
+                    },
+                    cancellationToken
+                );
+                var symbols = documentSymbols
+                    ?.Where(x => x.Location != null) // Filter out symbols without locations
+                    .Select(x => new DocumentSymbol
+                    {
+                        Name = x.Name,
+                        ContainerName = x.ContainerName,
+                        Kind = x.Kind.ToString(),
+                        Location = x.Location!.ToSymbolLocation(),
+                        Depth = 0 // We don't need depth calculation for position lookup
+                    })
+                    .ToList() ?? [];
+                
+                clickedSymbol = FindSymbolAtPosition(symbols, request.Position);
+                _logger.LogInformation("[Hover] Found symbol at position: {SymbolName} ({SymbolKind})", 
+                    clickedSymbol?.Name ?? "None", 
+                    clickedSymbol?.Kind ?? "Unknown");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "[Hover] Failed to get document symbols, continuing with hover only");
+            }
+            
+            // Then get hover information
             var hover = await LanguageServer.HoverAsync(new DocumentClientRequest
             {
                 Document = absoluteFileUri,
@@ -589,6 +623,7 @@ public class ApplicationService : IApplicationService
             return new HoverSuccess
             {
                 Value = hover?.Contents?.Value ?? string.Empty,
+                Symbol = clickedSymbol,
             };
         }
         catch (Exception ex)
@@ -1631,5 +1666,53 @@ public class ApplicationService : IApplicationService
         );
 
         return null;
+    }
+
+    private static DocumentSymbol? FindSymbolAtPosition(IEnumerable<DocumentSymbol> symbols, EditorPosition position)
+    {
+        // Find all symbols that contain the given position
+        var matchingSymbols = symbols
+            .Where(symbol => symbol.Location != null && IsPositionInSymbol(symbol.Location, position))
+            .ToList();
+
+        if (!matchingSymbols.Any())
+            return null;
+
+        // Return the symbol with the smallest range (most specific/innermost)
+        return matchingSymbols
+            .OrderBy(symbol => CalculateSymbolRange(symbol.Location!))
+            .First();
+    }
+
+    private static int CalculateSymbolRange(SymbolLocation location)
+    {
+        var startLine = location.StartLine ?? 0;
+        var endLine = location.EndLine ?? 0;
+        var startChar = location.StartCharacter ?? 0;
+        var endChar = location.EndCharacter ?? 0;
+
+        // Calculate range size: line difference * large number + character difference
+        // This ensures symbols on fewer lines are preferred, and within same lines, smaller char ranges win
+        return (int)((endLine - startLine) * 10000 + (endChar - startChar));
+    }
+
+    private static bool IsPositionInSymbol(SymbolLocation location, EditorPosition position)
+    {
+        var startLine = location.StartLine ?? 0;
+        var endLine = location.EndLine ?? 0;
+        var startChar = location.StartCharacter ?? 0;
+        var endChar = location.EndCharacter ?? 0;
+
+        // Check if position is within the symbol's range
+        if (position.Line < startLine || position.Line > endLine)
+            return false;
+
+        if (position.Line == startLine && position.Character < startChar)
+            return false;
+
+        if (position.Line == endLine && position.Character > endChar)
+            return false;
+
+        return true;
     }
 }

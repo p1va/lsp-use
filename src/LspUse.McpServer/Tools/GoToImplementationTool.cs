@@ -33,7 +33,6 @@ public static class GoToImplementationTool
         IApplicationService service, ILoggerFactory loggerFactory,
         [Description(ToolArgDescFilePath)] string file, [Description(ToolArgDescLine)] uint line,
         [Description(ToolArgDescCharacter)] uint character,
-        [Description("Whether to include code snippets for each implementation. When true, shows the actual source code for better context.")] bool showCode = false,
         CancellationToken cancellationToken = default)
     {
         var logger = loggerFactory.CreateLogger(ToolName);
@@ -61,7 +60,7 @@ public static class GoToImplementationTool
                     return [new TextContentBlock { Text = $"Found 0 implementations for symbol at {GetRelativeFilePath(file)}:{line}:{character}" }];
                 }
 
-                return BuildImplementationsResultText(implementations, file, line, character, showCode);
+                return BuildImplementationsResultText(implementations, file, line, character);
             },
             error =>
             {
@@ -91,7 +90,7 @@ public static class GoToImplementationTool
     }
 
     private static IEnumerable<TextContentBlock> BuildImplementationsResultText(
-        IEnumerable<SymbolLocation> implementations, string originalFile, uint originalLine, uint originalCharacter, bool showCode)
+        IEnumerable<SymbolLocation> implementations, string originalFile, uint originalLine, uint originalCharacter)
     {
         var implementationList = implementations.ToList();
         var fileGroups = implementationList.GroupBy(i => i.FilePath?.ToString() ?? "Unknown")
@@ -111,7 +110,7 @@ public static class GoToImplementationTool
             var filePath = GetRelativeFilePath(fileGroup.Key);
             var implementationsInFile = fileGroup.OrderBy(i => i.StartLine).ToList();
             
-            var fileHeader = $"\n{filePath} ({implementationsInFile.Count} implementation{(implementationsInFile.Count != 1 ? "s" : "")})";
+            var fileHeader = $"{filePath} ({implementationsInFile.Count} implementation{(implementationsInFile.Count != 1 ? "s" : "")})";
             
             var sb = new StringBuilder(fileHeader);
             
@@ -126,12 +125,6 @@ public static class GoToImplementationTool
                 if (!string.IsNullOrWhiteSpace(implementation.Text))
                 {
                     sb.Append($" - {implementation.Text.Trim()}");
-                }
-                
-                if (showCode && !string.IsNullOrWhiteSpace(implementation.Text))
-                {
-                    sb.AppendLine();
-                    sb.Append($"    Code: {implementation.Text.Trim()}");
                 }
             }
             

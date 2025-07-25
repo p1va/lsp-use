@@ -33,7 +33,6 @@ public static class FindReferencesTool
         IApplicationService service, ILoggerFactory loggerFactory,
         [Description(ToolArgDescFilePath)] string file, [Description(ToolArgDescLine)] uint line,
         [Description(ToolArgDescCharacter)] uint character, 
-        [Description("Whether to include code snippets for each reference. When true, shows the actual source code for better context.")] bool showCode = false,
         CancellationToken cancellationToken = default)
     {
         var logger = loggerFactory.CreateLogger("FindReferencesTool");
@@ -63,7 +62,7 @@ public static class FindReferencesTool
                     return [new TextContentBlock { Text = $"Found 0 references for symbol at {GetRelativeFilePath(file)}:{line}:{character}" }];
                 }
 
-                return BuildReferencesResultText(references, file, line, character, showCode);
+                return BuildReferencesResultText(references, file, line, character);
             },
             error =>
             {
@@ -93,7 +92,7 @@ public static class FindReferencesTool
     }
 
     private static IEnumerable<TextContentBlock> BuildReferencesResultText(
-        IEnumerable<SymbolLocation> references, string originalFile, uint originalLine, uint originalCharacter, bool showCode)
+        IEnumerable<SymbolLocation> references, string originalFile, uint originalLine, uint originalCharacter)
     {
         var referenceList = references.ToList();
         var fileGroups = referenceList.GroupBy(r => r.FilePath?.ToString() ?? "Unknown")
@@ -113,7 +112,7 @@ public static class FindReferencesTool
             var filePath = GetRelativeFilePath(fileGroup.Key);
             var referencesInFile = fileGroup.OrderBy(r => r.StartLine).ToList();
             
-            var fileHeader = $"\n{filePath} ({referencesInFile.Count} reference{(referencesInFile.Count != 1 ? "s" : "")})";
+            var fileHeader = $"{filePath} ({referencesInFile.Count} reference{(referencesInFile.Count != 1 ? "s" : "")})";
             
             var sb = new StringBuilder(fileHeader);
             
@@ -130,11 +129,6 @@ public static class FindReferencesTool
                     sb.Append($" - {reference.Text.Trim()}");
                 }
                 
-                if (showCode && !string.IsNullOrWhiteSpace(reference.Text))
-                {
-                    sb.AppendLine();
-                    sb.Append($"    Code: {reference.Text.Trim()}");
-                }
             }
             
             yield return new TextContentBlock { Text = sb.ToString() };

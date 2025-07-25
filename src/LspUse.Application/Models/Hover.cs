@@ -9,4 +9,5 @@ public record HoverRequest
 public record HoverSuccess
 {
     public required string? Value { get; init; }
+    public DocumentSymbol? Symbol { get; init; }
 }
