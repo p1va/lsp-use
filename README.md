@@ -2,7 +2,7 @@
 
 # lsp-use
 
-An MCP interface to bring the structure of Language Server to Coding Agents
+An MCP interface to bring the structure of Language Servers to Coding Agents
 
 ![C#](https://img.shields.io/badge/c%23-%23239120.svg?logo=csharp&logoColor=white)
 ![Python](https://img.shields.io/badge/python-3670A0?&logo=python&logoColor=ffdd54)
@@ -152,28 +152,22 @@ Coming soon...
 - `lsp-use --list-lsps` for a list of the configured language servers (some will be built-in while other taken by the optional config file)
 - `lsp-use --version` to check version
 
-### Running
+### C#
 
-For C# projects the tool can be executed with:
+- `lsp-use --lsp csharp --workspace /path/to/folder --sln /path/to/folder/MySolution.sln`
+- `lsp-use --lsp csharp --workspace /path/to/folder --projects /path/to/folder/project1/Project1.csproj /path/to/folder/project2/Project2.csproj`
 
-```bash
-# Analyze a C# solution
-lsp-use --workspace /path/to/folder --sln /path/to/folder/MySolution.sln
-```
+### Typescript
 
-For other languages running `lsp-use` *should* be all you need thanks to detection of the configured workspace files.
+- `lsp-use --workspace /path/to/project --lsp typescript`
 
-Selecting a language server can be done via `--lsp` option:
+### Python
 
-```bash
-lsp-use --workspace /path/to/project --lsp typescript # pre configured
-lsp-use --workspace /path/to/project --lsp pyright # pre configured
-lsp-use --workspace /path/to/project --lsp your-custom-lsp
-```
+- `lsp-use --workspace /path/to/project --lsp pyright`
 
 ### Adding more Language Servers
 
-For advanced usage, create a custom LSP configuration file at `~/.config/lsp-use/lsps.yaml`:
+To add more language servers, create a custom LSP configuration file at `~/.config/lsp-use/lsps.yaml`:
 
 ```bash
 # Create config directory
@@ -183,18 +177,19 @@ mkdir -p ~/.config/lsp-use
 curl -o ~/.config/lsp-use/lsps.yaml https://raw.githubusercontent.com/p1va/lsp-use/main/examples/lsps.yaml
 ```
 
-The configuration file allows you to:
+Via the configuration file (see [examples/lsps.yaml](examples/lsps.yaml)) is possible to:
 - **Customize symbol filtering**: Control depth and symbol types shown
 - **Add new file extensions**: Map custom file types to language servers
 - **Tune diagnostics**: Configure error reporting strategies
 
- **See the complete example**: [examples/lsps.yaml](examples/lsps.yaml)
+Then run with
+- `lsp-use --workspace /path/to/project --lsp your-custom-lsp`
 
-## Configuration
+## Coding Agents
 
 <details>
 
-<summary>Claude Code</summary>
+<summary><b>Claude Code</b></summary>
 
 Update your `.mcp.json` file with a `csharp` where the path and sln files match the ones of your repo
 
@@ -221,7 +216,7 @@ Update your `CLAUDE.md` with instructions on tool use recommending to prefer LSP
 
 <details>
 
-<summary>OpenAI Codex</summary>
+<summary><b>OpenAI Codex</b></summary>
 
 Add or update your `$HOME/.codex/config.toml`. Doesn't seem to work at repo level yet. 
 
@@ -237,7 +232,7 @@ Update your `AGENTS.md` with instructions on tool use like [here](AGENTS.md).
 
 <details>
 
-<summary>Copilot in VS Code</summary>
+<summary><b>Copilot in VS Code</b></summary>
 
 Add or update your `.vscode/mcp.toml` to include this `csharp` server and provide your own solution file name
 

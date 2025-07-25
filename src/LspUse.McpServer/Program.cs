@@ -309,7 +309,9 @@ static async Task<int> RunApplication(DirectoryInfo workspace,
     var effectiveLogLevel = logLevel;
     if (Environment.GetEnvironmentVariable("LSP_USE_LOG_LEVEL") is var envLogLevel &&
         Enum.TryParse<LogLevel>(envLogLevel, true, out var parsedLogLevel))
+    {
         effectiveLogLevel = parsedLogLevel;
+    }
 
     var builder = Host.CreateApplicationBuilder();
 
@@ -342,6 +344,16 @@ static async Task<int> RunApplication(DirectoryInfo workspace,
     // Add arguments from the language profile
     for (var i = 0; i < arguments.Length; i++)
         config[$"Lsp:Arguments:{i}"] = arguments[i];
+
+    // Add environment variables from the language profile
+    if (profile.Environment != null)
+    {
+        for (var i = 0; i < profile.Environment.Count; i++)
+        {
+            var kvp = profile.Environment.ElementAt(i);
+            config[$"Lsp:Environment:{kvp.Key}"] = kvp.Value;
+        }
+    }
 
     // Add solution path if provided
     if (csharpSolution != null)

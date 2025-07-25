@@ -14,6 +14,7 @@ public record LanguageServerProcessConfiguration
     public string? SolutionPath { get; init; }
     public IReadOnlyList<string>? ProjectPaths { get; init; }
     public string? ProfileName { get; init; }
+    public Dictionary<string, string>? Environment { get; init; }
 
     public override string ToString() =>
         $"{Command} {string.Join(' ', Arguments ?? [])} " + $"Workspace Path: {WorkspacePath} " +

@@ -134,18 +134,18 @@ public static class Extensions
             }
 
             var fullText = string.Join(" ", result);
-            
+
             // Apply truncation for symbols that span too many lines or are too long
             const int maxLines = 3;
             const int maxCharacters = 200;
             var lineCount = endLine - startLine + 1;
-            
+
             if (lineCount > maxLines || fullText.Length > maxCharacters)
             {
                 // For large spans, return just the first few meaningful lines
                 var truncatedResult = new List<string>();
                 var charCount = 0;
-                
+
                 for (var i = startLine; i <= endLine && i < lines.Length && truncatedResult.Count < maxLines; i++)
                 {
                     var line = lines[i].Trim();
@@ -159,7 +159,7 @@ public static class Extensions
                         charCount += line.Length + 1; // +1 for space
                     }
                 }
-                
+
                 var truncatedText = string.Join(" ", truncatedResult);
                 return truncatedText + (lineCount > maxLines || fullText.Length > maxCharacters ? "..." : "");
             }

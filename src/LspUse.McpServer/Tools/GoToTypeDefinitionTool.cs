@@ -1,8 +1,10 @@
 using System.ComponentModel;
+using System.Text;
 using LspUse.Application;
 using LspUse.Application.Models;
 using Microsoft.Extensions.Logging;
 using ModelContextProtocol.Server;
+using ModelContextProtocol.Protocol;
 using OneOf;
 
 namespace LspUse.McpServer.Tools;
@@ -25,12 +27,14 @@ public static class GoToTypeDefinitionTool
     private const string ToolArgDescCharacter =
         "The character number at which the symbol is located (1-based)";
 
-    [McpServerTool(Name = ToolName, Title = ToolTitle, UseStructuredContent = true)]
+    [McpServerTool(Name = ToolName, Title = ToolTitle, UseStructuredContent = false)]
     [Description(ToolDescription)]
-    public static async Task<IEnumerable<SymbolLocation>> GoToTypeDefinitionAsync(
+    public static async Task<IEnumerable<TextContentBlock>> GoToTypeDefinitionAsync(
         IApplicationService service, ILoggerFactory loggerFactory,
         [Description(ToolArgDescFilePath)] string file, [Description(ToolArgDescLine)] uint line,
-        [Description(ToolArgDescCharacter)] uint character, CancellationToken cancellationToken)
+        [Description(ToolArgDescCharacter)] uint character,
+        [Description("Whether to include code snippets for each type definition. When true, shows the actual source code for better context.")] bool showCode = false,
+        CancellationToken cancellationToken = default)
     {
         var logger = loggerFactory.CreateLogger(ToolName);
 
@@ -46,11 +50,18 @@ public static class GoToTypeDefinitionTool
             }
         }, cancellationToken);
 
-        return result.Match<IEnumerable<SymbolLocation>>(
+        return result.Match<IEnumerable<TextContentBlock>>(
             success =>
             {
-                logger.LogInformation("MCP GoToTypeDefinitionTool returning {Count} locations", success.Locations.Count());
-                return success.Locations;
+                var typeDefinitions = success.Locations;
+                logger.LogInformation("MCP GoToTypeDefinitionTool returning {Count} locations", typeDefinitions.Count());
+                
+                if (!typeDefinitions.Any())
+                {
+                    return [new TextContentBlock { Text = $"Found 0 type definitions for symbol at {GetRelativeFilePath(file)}:{line}:{character}" }];
+                }
+
+                return BuildTypeDefinitionsResultText(typeDefinitions, file, line, character, showCode);
             },
             error =>
             {
@@ -62,5 +73,69 @@ public static class GoToTypeDefinitionTool
                 throw new InvalidOperationException($"Go to type definition operation failed: {error.Message}", error.Exception);
             }
         );
+    }
+
+    private static string GetRelativeFilePath(string filePath)
+    {
+        try
+        {
+            var currentDirectory = Directory.GetCurrentDirectory();
+            var uri = new Uri(filePath);
+            var localPath = uri.LocalPath;
+            return Path.GetRelativePath(currentDirectory, localPath);
+        }
+        catch
+        {
+            return filePath;
+        }
+    }
+
+    private static IEnumerable<TextContentBlock> BuildTypeDefinitionsResultText(
+        IEnumerable<SymbolLocation> typeDefinitions, string originalFile, uint originalLine, uint originalCharacter, bool showCode)
+    {
+        var typeDefinitionList = typeDefinitions.ToList();
+        var fileGroups = typeDefinitionList.GroupBy(t => t.FilePath?.ToString() ?? "Unknown")
+                                           .OrderBy(g => GetRelativeFilePath(g.Key))
+                                           .ToList();
+
+        // Summary
+        var fileCount = fileGroups.Count;
+        var typeDefinitionCount = typeDefinitionList.Count;
+        var summary = $"Found {typeDefinitionCount} type definition{(typeDefinitionCount != 1 ? "s" : "")} for symbol at {GetRelativeFilePath(originalFile)}:{originalLine}:{originalCharacter} across {fileCount} file{(fileCount != 1 ? "s" : "")}:";
+
+        yield return new TextContentBlock { Text = summary };
+
+        // File groups
+        foreach (var fileGroup in fileGroups)
+        {
+            var filePath = GetRelativeFilePath(fileGroup.Key);
+            var typeDefinitionsInFile = fileGroup.OrderBy(t => t.StartLine).ToList();
+            
+            var fileHeader = $"\n{filePath} ({typeDefinitionsInFile.Count} type definition{(typeDefinitionsInFile.Count != 1 ? "s" : "")})";
+            
+            var sb = new StringBuilder(fileHeader);
+            
+            foreach (var typeDefinition in typeDefinitionsInFile)
+            {
+                var line = typeDefinition.StartLine ?? 0; // Already 1-based
+                var character = typeDefinition.StartCharacter ?? 0; // Already 1-based
+                
+                sb.AppendLine();
+                sb.Append($"  {line}:{character}");
+                
+                if (!string.IsNullOrWhiteSpace(typeDefinition.Text))
+                {
+                    sb.Append($" - {typeDefinition.Text.Trim()}");
+                }
+                
+                if (showCode && !string.IsNullOrWhiteSpace(typeDefinition.Text))
+                {
+                    sb.AppendLine();
+                    sb.Append($"    Code: {typeDefinition.Text.Trim()}");
+                }
+            }
+            
+            yield return new TextContentBlock { Text = sb.ToString() };
+        }
     }
 }
