@@ -9,7 +9,7 @@ namespace LspUse.LanguageServerClient.Handlers;
 /// Registrations are stored in a thread-safe <see cref="ConcurrentQueue{T}"/> for later
 /// consumption by the rest of the application or for test assertions.
 /// </summary>
-public sealed class ClientCapabilityRegistrationHandler : ILspNotificationHandler
+public sealed class ClientCapabilityRegistrationHandler : IRpcLocalTarget
 {
     public Task RegistrationCompleted => _registrationCompletedSource.Task;
 

@@ -1,13 +1,10 @@
-using System.Diagnostics;
 using LspUse.Application.Configuration;
 using LspUse.Application.Models;
 using LspUse.LanguageServerClient;
 using LspUse.LanguageServerClient.Handlers;
-using LspUse.LanguageServerClient.Json;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using OneOf;
-using StreamJsonRpc;
 
 namespace LspUse.Application;
 
@@ -16,21 +13,140 @@ using LanguageServerClient.Models;
 
 public class ApplicationService : IApplicationService
 {
-    private readonly LanguageServerProcessConfiguration _config;
-    private readonly IEnumerable<ILspNotificationHandler> _lspNotificationHandlers;
+    private readonly LanguageServerConfiguration _config;
+    private readonly ILanguageServerManager _manager;
     private readonly ILogger<ApplicationService> _logger;
     private readonly ILoggerFactory _loggerFactory;
     private readonly LanguageIdMapper _languageIdMapper;
     private readonly LspConfigurationService _lspConfigurationService;
-
-    // TODO: This needs to be wrapped in a process monitor
-    private Process? _process;
-    private JsonRpc? _rpc;
-    private JsonRpcLspClient? _languageServer;
     private System.Text.Json.Nodes.JsonNode? _serverCapabilities;
 
-    private JsonRpcLspClient LanguageServer =>
-        _languageServer ?? throw new InvalidOperationException("LSP client not initialized");
+    private ILspClient LanguageServer =>
+        _manager.Client ?? throw new InvalidOperationException("LSP client not initialized");
+
+    public ApplicationService(IOptions<LanguageServerConfiguration> options,
+        ILanguageServerManager manager,
+        ILogger<ApplicationService> logger,
+        ILoggerFactory loggerFactory,
+        LanguageIdMapper languageIdMapper,
+        LspConfigurationService lspConfigurationService)
+    {
+        ArgumentNullException.ThrowIfNull(options);
+        ArgumentNullException.ThrowIfNull(manager);
+        ArgumentNullException.ThrowIfNull(logger);
+        ArgumentNullException.ThrowIfNull(loggerFactory);
+        ArgumentNullException.ThrowIfNull(languageIdMapper);
+        ArgumentNullException.ThrowIfNull(lspConfigurationService);
+
+        _config = options.Value;
+        _manager = manager;
+        _logger = logger;
+        _loggerFactory = loggerFactory;
+        _languageIdMapper = languageIdMapper;
+        _lspConfigurationService = lspConfigurationService;
+    }
+
+    public async Task InitialiseAsync(CancellationToken cancellationToken = default)
+    {
+        _manager.Start();
+
+        _logger.LogInformation("Initialize invoked with config: {@Config}", _config);
+
+        var workspaceFullPath = Path.GetFullPath(_config.WorkingDirectory);
+
+        _logger.LogInformation("Sending Initialize request to LSP: {WorkspacePath}",
+            workspaceFullPath
+        );
+
+        // Exchange capabilities with the server
+        _serverCapabilities = await LanguageServer
+            .InitializeAsync(new InitializeParams
+                {
+                    ProcessId = Environment.ProcessId,
+                    RootUri = new Uri(workspaceFullPath),
+                    WorkspaceFolders =
+                    [
+                        new WorkspaceFolder
+                        {
+                            Name = workspaceFullPath,
+                            Uri = new Uri(workspaceFullPath),
+                        },
+                    ],
+                    Capabilities = new ClientCapabilities
+                    {
+                        Workspace = new WorkspaceClientCapabilities
+                        {
+                            Diagnostic = null,
+                        },
+                        TextDocument = new TextDocumentClientCapabilities
+                        {
+                            PublishDiagnostics = new PublishDiagnosticsTextDocumentSetting
+                            {
+                                RelatedInformation = true,
+                                VersionSupport = true,
+                                CodeDescriptionSupport = true,
+                                DataSupport = true,
+                            },
+                            Diagnostic = new DiagnosticTextDocumentSetting
+                            {
+                                DynamicRegistration = true,
+                                RelatedDocumentSupport = true,
+                            },
+                        },
+                    },
+                },
+                cancellationToken
+            );
+
+        _logger.LogDebug("LSP Server replied with capabilities {@ServerCapabilities}",
+            _serverCapabilities
+        );
+
+        // Communicate the server that all is good on the client side
+        var initializedNotification = new
+        {
+        };
+
+        await LanguageServer.InitializedAsync(initializedNotification, cancellationToken);
+
+        _logger.LogDebug("Sent Initialized notifcation");
+
+        // C# needs a custom notification to communicate what to open: a solution or a set of projects
+
+        if (!string.IsNullOrWhiteSpace(_config.SolutionPath))
+        {
+            var solutionFullPath = Path.GetFullPath(_config.SolutionPath);
+            _logger.LogInformation("Opening solution: {SolutionPath}", solutionFullPath);
+
+            await LanguageServer.NotifyAsync("solution/open",
+                new
+                {
+                    solution = new Uri(solutionFullPath),
+                },
+                cancellationToken
+            );
+        }
+        else if (_config.ProjectPaths is { Count: > 0, })
+        {
+            var projectUris = _config
+                .ProjectPaths.Select(p => new Uri(Path.GetFullPath(p)))
+                .ToList();
+
+            _logger.LogInformation("Opening projects: {ProjectPaths}",
+                string.Join(", ", _config.ProjectPaths)
+            );
+
+            await LanguageServer.NotifyAsync("project/open",
+                new
+                {
+                    projects = projectUris,
+                },
+                cancellationToken
+            );
+        }
+
+        _logger.LogDebug("Initialization completed");
+    }
 
     private bool IsWorkspaceReady()
     {
@@ -38,13 +154,9 @@ public class ApplicationService : IApplicationService
         if (!IsCSharpWorkspace())
             return true;
 
-        var handler = _lspNotificationHandlers
-            .OfType<WorkspaceNotificationHandler>()
-            .FirstOrDefault();
-
         // If the handler is not present we assume the workspace does not need
         // to signal readiness (non-Roslyn LS) and therefore treat it as ready.
-        return handler is null || handler.WorkspaceInitialization.IsCompleted;
+        return _manager.Client.Workspace.WorkspaceInitialization.IsCompleted;
     }
 
     private static ApplicationServiceError WorkspaceLoadingError() =>
@@ -57,196 +169,7 @@ public class ApplicationService : IApplicationService
     private bool IsCSharpWorkspace() =>
         !string.IsNullOrWhiteSpace(_config.SolutionPath) || _config.ProjectPaths?.Any() == true;
 
-    public ApplicationService(IOptions<LanguageServerProcessConfiguration> options,
-        IEnumerable<ILspNotificationHandler> handlers,
-        ILogger<ApplicationService> logger,
-        ILoggerFactory loggerFactory,
-        LanguageIdMapper languageIdMapper,
-        LspConfigurationService lspConfigurationService)
-    {
-        ArgumentNullException.ThrowIfNull(options);
-        ArgumentNullException.ThrowIfNull(handlers);
-        ArgumentNullException.ThrowIfNull(logger);
-        ArgumentNullException.ThrowIfNull(loggerFactory);
-        ArgumentNullException.ThrowIfNull(languageIdMapper);
-        ArgumentNullException.ThrowIfNull(lspConfigurationService);
-
-        _config = options.Value;
-        _lspNotificationHandlers = handlers ?? [];
-        _logger = logger;
-        _loggerFactory = loggerFactory;
-        _languageIdMapper = languageIdMapper;
-        _lspConfigurationService = lspConfigurationService;
-    }
-
-    public async Task InitialiseAsync(CancellationToken cancellationToken = default)
-    {
-        _logger.LogInformation("Initialize invoked with config: {@Config}", _config);
-
-        var processStartInfo = new ProcessStartInfo
-        {
-            FileName = _config.Command,
-            RedirectStandardInput = true,
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            UseShellExecute = false,
-            WorkingDirectory = _config.WorkspacePath,
-        };
-
-        foreach (var arg in _config.Arguments ?? [])
-            processStartInfo.ArgumentList.Add(arg);
-
-        // Add environment variables from configuration
-        if (_config.Environment != null)
-        {
-            foreach (var envVar in _config.Environment)
-                processStartInfo.Environment.Add(envVar.Key, envVar.Value);
-        }
-
-        _process = new Process
-        {
-            StartInfo = processStartInfo,
-            EnableRaisingEvents = true,
-        };
-
-        // On process error event
-        _process.ErrorDataReceived += (sender, args) =>
-        {
-            _logger.LogError("Process raised error: {ProcessData}", args.Data);
-        };
-
-        if (!_process.Start())
-        {
-            _logger.LogError("Failed to start process");
-
-            throw new InvalidOperationException($"Failed to start process {_config.Command}");
-        }
-
-        _process.BeginErrorReadLine();
-
-        _logger.LogInformation("Process started with PID: {ProcessId}", _process.Id);
-
-        var jsonFormatter = new SystemTextJsonFormatter();
-        jsonFormatter.JsonSerializerOptions.Converters.Add(new AbsoluteUriJsonConverter());
-
-        _rpc = new JsonRpc(new HeaderDelimitedMessageHandler(_process.StandardInput.BaseStream,
-                _process.StandardOutput.BaseStream,
-                jsonFormatter
-            )
-        );
-
-        foreach (var h in _lspNotificationHandlers)
-            _rpc.AddLocalRpcTarget(h);
-
-        // Enable trace logging for LSP communication
-        _rpc.TraceSource.Switch.Level = SourceLevels.All;
-        _rpc.TraceSource.Listeners.Add(new LoggerTraceListener(_logger));
-
-        _rpc.Disconnected += (sender, args) => _logger.LogError(args.Exception,
-            "DISCONNECTED: {Description} {Reason}",
-            args.Description,
-            args.Reason
-        );
-
-        _rpc.StartListening();
-
-        _languageServer = new JsonRpcLspClient(_rpc);
-
-        var workspaceFullPath = Path.GetFullPath(_config.WorkspacePath);
-
-        _logger.LogInformation("Sending Initialize request to LSP: {WorkspacePath}",
-            workspaceFullPath
-        );
-
-        var initializeRequest = new InitializeParams
-        {
-            ProcessId = Environment.ProcessId,
-            RootUri = new Uri(workspaceFullPath),
-            WorkspaceFolders =
-            [
-                new WorkspaceFolder
-                {
-                    Name = workspaceFullPath,
-                    Uri = new Uri(workspaceFullPath),
-                },
-            ],
-            Capabilities = new ClientCapabilities
-            {
-                Workspace = new WorkspaceClientCapabilities
-                {
-                    Diagnostic = null,
-                },
-                TextDocument = new TextDocumentClientCapabilities
-                {
-                    PublishDiagnostics = new PublishDiagnosticsTextDocumentSetting
-                    {
-                        RelatedInformation = true,
-                        VersionSupport = true,
-                        CodeDescriptionSupport = true,
-                        DataSupport = true,
-                    },
-                    Diagnostic = new DiagnosticTextDocumentSetting
-                    {
-                        DynamicRegistration = true,
-                        RelatedDocumentSupport = true,
-                    },
-                },
-            },
-        };
-
-        // These are the capabilities supported by the server
-        var serverCapabilities = await _languageServer
-            .InitializeAsync(initializeRequest, cancellationToken);
-
-        // Store server capabilities for later use (e.g., for extracting diagnostic providers)
-        _serverCapabilities = serverCapabilities;
-
-        _logger.LogDebug("LSP Server replied with capabilities {@ServerCapabilities}",
-            serverCapabilities
-        );
-
-        await _languageServer.InitializedAsync(new
-            {
-            },
-            cancellationToken
-        );
-
-        _logger.LogDebug("Sent Initialized notifcation");
-
-        if (!string.IsNullOrWhiteSpace(_config.SolutionPath))
-        {
-            var solutionFullPath = Path.GetFullPath(_config.SolutionPath);
-            _logger.LogInformation("Opening solution: {SolutionPath}", solutionFullPath);
-
-            await _languageServer.NotifyAsync("solution/open",
-                new
-                {
-                    solution = new Uri(solutionFullPath),
-                },
-                cancellationToken
-            );
-        }
-        else if (_config.ProjectPaths is { Count: > 0, })
-        {
-            _logger.LogInformation("Opening projects: {ProjectPaths}",
-                string.Join(", ", _config.ProjectPaths)
-            );
-            var uris = _config
-                .ProjectPaths.Select(p => new Uri(Path.GetFullPath(p)))
-                .ToArray();
-            await _languageServer.NotifyAsync("project/open",
-                new
-                {
-                    projects = uris,
-                },
-                cancellationToken
-            );
-        }
-
-        _logger.LogDebug("Initialization completed");
-    }
-
-    public async Task WaitForWorkspaceReadyAsync(CancellationToken cancellationToken = default)
+    private async Task WaitForWorkspaceReadyAsync(CancellationToken cancellationToken = default)
     {
         // Only wait for workspace loading if C# specific files (.sln or .csproj) are provided
         if (!IsCSharpWorkspace())
@@ -258,12 +181,7 @@ public class ApplicationService : IApplicationService
 
         _logger.LogInformation("Waiting for workspace to load");
 
-        var handler = _lspNotificationHandlers
-            .OfType<WorkspaceNotificationHandler>()
-            .FirstOrDefault();
-
-        if (handler is not null)
-            await handler.WorkspaceInitialization;
+        await LanguageServer.Workspace.WorkspaceInitialization;
 
         _logger.LogInformation("Successully loaded workspace");
     }
@@ -500,11 +418,6 @@ public class ApplicationService : IApplicationService
             request.Position.Character
         );
 
-        _logger.LogTrace("[Process] Pid:{Pid} Exited:{HasExited}",
-            _process?.Id,
-            _process?.HasExited
-        );
-
         // Generate debug context - always include this regardless of success/failure
         var debugContext = GetCompletionDebugContext(request.FilePath, request.Position);
 
@@ -565,11 +478,6 @@ public class ApplicationService : IApplicationService
             request.FilePath,
             request.Position.Line,
             request.Position.Character
-        );
-
-        _logger.LogTrace("[Process] Pid:{Pid} Exited:{HasExited}",
-            _process?.Id,
-            _process?.HasExited
         );
 
         try
@@ -738,31 +646,10 @@ public class ApplicationService : IApplicationService
 
         _logger.LogInformation("[GetWindowLogMessages] Retrieving window log messages");
 
-        _logger.LogTrace("[Process] Pid:{Pid} Exited:{HasExited}",
-            _process?.Id,
-            _process?.HasExited
-        );
-
         try
         {
-            var windowNotificationHandler = _lspNotificationHandlers
-                .OfType<WindowNotificationHandler>()
-                .FirstOrDefault();
-
-            if (windowNotificationHandler == null)
-            {
-                _logger.LogWarning("[GetWindowLogMessages] WindowNotificationHandler not found");
-
-                var empty = new WindowLogMessage[]
-                {
-                };
-
-                return Task.FromResult(
-                    OneOf<WindowLog, ApplicationServiceError>.FromT0(new WindowLog(empty))
-                );
-            }
-
-            var logMessages = windowNotificationHandler
+            var logMessages = _manager
+                .Client.Window
                 .LogMessages.Select(x =>
                     new WindowLogMessage(x.Message ?? string.Empty, x.MessageType)
                 )
@@ -1210,95 +1097,12 @@ public class ApplicationService : IApplicationService
         }
     }
 
-    public async Task ShutdownAsync(CancellationToken cancellationToken = default)
-    {
-        _logger.LogInformation("Shutting down LSP server gracefully");
-
-        try
-        {
-            if (_languageServer is not null)
-            {
-                _logger.LogDebug("Sending LSP shutdown request");
-                await _languageServer.ShutdownAsync(cancellationToken);
-
-                _logger.LogDebug("Sending LSP exit notification");
-                await _languageServer.ExitAsync(cancellationToken);
-            }
-
-            if (_process is { HasExited: false, })
-            {
-                _logger.LogDebug("Waiting for LSP server process to exit");
-                using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
-
-                try
-                {
-                    await _process.WaitForExitAsync(cts.Token);
-                    _logger.LogInformation("LSP server process exited gracefully");
-                }
-                catch (OperationCanceledException)
-                {
-                    _logger.LogWarning(
-                        "LSP server process did not exit within timeout, killing process"
-                    );
-                    if (!_process.HasExited)
-                        _process.Kill(true);
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error during LSP server shutdown");
-        }
-    }
-
-    /// <summary>
-    /// Gets the DefaultNotificationHandler to access unhandled notifications.
-    /// </summary>
-    /// <returns>The DefaultNotificationHandler instance, or null if not found</returns>
+    // TODO: This should not be exposed as is, it should just return results
     public DefaultNotificationHandler? GetDefaultNotificationHandler() =>
-        _lspNotificationHandlers
-            .OfType<DefaultNotificationHandler>()
-            .FirstOrDefault();
+        LanguageServer.UnhandledNotifications;
 
-    /// <summary>
-    /// Gets the DefaultRequestHandler to access unhandled requests.
-    /// </summary>
-    /// <returns>The DefaultRequestHandler instance, or null if not found</returns>
-    public DefaultRequestHandler? GetDefaultRequestHandler() =>
-        _lspNotificationHandlers
-            .OfType<DefaultRequestHandler>()
-            .FirstOrDefault();
-
-    public async ValueTask DisposeAsync()
-    {
-        try
-        {
-            _rpc?.Dispose();
-
-            if (_process is { HasExited: false, })
-            {
-                _process.StandardInput.Close();
-
-                using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(3));
-
-                try
-                {
-                    await _process.WaitForExitAsync(cts.Token);
-                }
-                catch (OperationCanceledException)
-                {
-                    if (!_process.HasExited)
-                        _process.Kill(true);
-                }
-            }
-        }
-        catch
-        {
-            // Ignore dispose errors.
-        }
-
-        GC.SuppressFinalize(this);
-    }
+    // TODO: Same as above
+    public DefaultRequestHandler? GetDefaultRequestHandler() => LanguageServer.UnhandledRequests;
 
     /// <summary>
     /// Determines the diagnostic strategy to use for the chosen LSP profile.
@@ -1462,28 +1266,22 @@ public class ApplicationService : IApplicationService
         diagnosticProviderIds.AddRange(serverCapabilitiesProviders);
 
         // Step 2: Check for dynamic registration providers (e.g., C#)
-        var clientCapabilityRegistrationHandler = _lspNotificationHandlers
-            .OfType<ClientCapabilityRegistrationHandler>()
-            .FirstOrDefault();
 
-        if (clientCapabilityRegistrationHandler != null)
+        // If registrations are available, add them to the list
+        if (LanguageServer.ClientCapability.RegistrationCompleted.IsCompleted ||
+            LanguageServer.ClientCapability.Registrations.Any())
         {
-            // If registrations are available, add them to the list
-            if (clientCapabilityRegistrationHandler.RegistrationCompleted.IsCompleted ||
-                clientCapabilityRegistrationHandler.Registrations.Any())
-            {
-                var registrations = clientCapabilityRegistrationHandler.Registrations.ToArray();
-                var textDocumentDiagnosticRegistrations = registrations
-                    .Where(r => r.Method == "textDocument/diagnostic")
-                    .ToArray();
+            var registrations = LanguageServer.ClientCapability.Registrations.ToArray();
+            var textDocumentDiagnosticRegistrations = registrations
+                .Where(r => r.Method == "textDocument/diagnostic")
+                .ToArray();
 
-                foreach (var registration in textDocumentDiagnosticRegistrations)
-                {
-                    var identifier = registration.RegisterOptions?.Identifier;
-                    if (!string.IsNullOrEmpty(identifier) &&
-                        !diagnosticProviderIds.Contains(identifier))
-                        diagnosticProviderIds.Add(identifier);
-                }
+            foreach (var registration in textDocumentDiagnosticRegistrations)
+            {
+                var identifier = registration.RegisterOptions?.Identifier;
+                if (!string.IsNullOrEmpty(identifier) &&
+                    !diagnosticProviderIds.Contains(identifier))
+                    diagnosticProviderIds.Add(identifier);
             }
         }
 
@@ -1537,18 +1335,6 @@ public class ApplicationService : IApplicationService
         int waitTimeoutMs,
         CancellationToken cancellationToken)
     {
-        var diagnosticsHandler = _lspNotificationHandlers
-            .OfType<DiagnosticsNotificationHandler>()
-            .FirstOrDefault();
-
-        if (diagnosticsHandler is null)
-        {
-            _logger.LogWarning("[GetPushDiagnosticsAsync] DiagnosticsNotificationHandler not found"
-            );
-
-            return [];
-        }
-
         // Normalize the URI to ensure consistent comparison with LSP-provided URIs
         var normalizedUri = NormalizeFileUri(fileUri);
 
@@ -1560,7 +1346,7 @@ public class ApplicationService : IApplicationService
 
         await Task.Delay(waitTimeoutMs, cancellationToken);
 
-        var newDiagnostics = FindDiagnosticsByUri(diagnosticsHandler.LatestDiagnostics,
+        var newDiagnostics = FindDiagnosticsByUri(LanguageServer.Diagnostics.LatestDiagnostics,
             normalizedUri
         );
 
@@ -1793,5 +1579,39 @@ public class ApplicationService : IApplicationService
         }
 
         return filePath;
+    }
+
+    public async Task ShutdownAsync(CancellationToken cancellationToken = default)
+    {
+        _logger.LogInformation("Shutting down LSP server gracefully");
+
+        try
+        {
+            _logger.LogDebug("Sending LSP shutdown request");
+            await LanguageServer.ShutdownAsync(cancellationToken);
+
+            _logger.LogDebug("Sending LSP exit notification");
+            await LanguageServer.ExitAsync(cancellationToken);
+
+            await _manager.DisposeAsync();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error during LSP server shutdown");
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        try
+        {
+            await _manager.DisposeAsync();
+        }
+        catch
+        {
+            // Ignore dispose errors.
+        }
+
+        GC.SuppressFinalize(this);
     }
 }

@@ -1,7 +1,7 @@
 using System.Diagnostics;
 using Microsoft.Extensions.Logging;
 
-namespace LspUse.Application;
+namespace LspUse.LanguageServerClient;
 
 internal class LoggerTraceListener(ILogger logger) : TraceListener
 {

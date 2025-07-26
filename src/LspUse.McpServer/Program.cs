@@ -337,7 +337,7 @@ static async Task<int> RunApplication(DirectoryInfo workspace,
     var config = new Dictionary<string, string?>
     {
         ["Lsp:Command"] = resolvedCommand,
-        ["Lsp:WorkspacePath"] = workspace.FullName,
+        ["Lsp:WorkingDirectory"] = workspace.FullName,
         ["Lsp:ProfileName"] = lspName,
     };
 
@@ -376,6 +376,12 @@ static async Task<int> RunApplication(DirectoryInfo workspace,
         builder.Configuration.AddInMemoryCollection(projectConfig);
     }
 
+    builder.Services.Configure<LanguageServerConfiguration>(
+        builder.Configuration.GetSection("Lsp")
+    );
+    
+    // Bind to both client level and application level configs even if they inherit from each others
+    // Need to be improved
     builder.Services.Configure<LanguageServerProcessConfiguration>(
         builder.Configuration.GetSection("Lsp")
     );
@@ -399,13 +405,15 @@ static async Task<int> RunApplication(DirectoryInfo workspace,
 
     builder
         .Services
-        .AddSingleton<ILspNotificationHandler, WindowNotificationHandler>()
-        .AddSingleton<ILspNotificationHandler, DiagnosticsNotificationHandler>()
-        .AddSingleton<ILspNotificationHandler, WorkspaceNotificationHandler>()
-        .AddSingleton<ILspNotificationHandler, ClientCapabilityRegistrationHandler>()
-        .AddSingleton<ILspNotificationHandler, DefaultNotificationHandler>()
-        .AddSingleton<ILspNotificationHandler, DefaultRequestHandler>();
+        .AddSingleton<IRpcLocalTarget, WindowNotificationHandler>()
+        .AddSingleton<IRpcLocalTarget, DiagnosticsNotificationHandler>()
+        .AddSingleton<IRpcLocalTarget, WorkspaceNotificationHandler>()
+        .AddSingleton<IRpcLocalTarget, ClientCapabilityRegistrationHandler>()
+        .AddSingleton<IRpcLocalTarget, DefaultNotificationHandler>()
+        .AddSingleton<IRpcLocalTarget, DefaultRequestHandler>();
 
+    builder.Services.AddSingleton<ILanguageServerProcess, LanguageServerProcess>();
+    builder.Services.AddSingleton<ILanguageServerManager, LanguageServerManager>();
     builder.Services.AddSingleton<IApplicationService, ApplicationService>();
 
     builder

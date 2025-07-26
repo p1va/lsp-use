@@ -7,4 +7,4 @@ namespace LspUse.LanguageServerClient;
 /// <c>LspUse.Client.Handlers</c> and are wired into <see
 /// cref="StreamJsonRpc.JsonRpc"/> by back-end classes.
 /// </summary>
-public interface ILspNotificationHandler { }
+public interface IRpcLocalTarget { }

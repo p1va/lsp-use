@@ -49,7 +49,7 @@ public record RoslynToastParams
 /// Messages are stored in thread-safe <see cref="ConcurrentQueue{T}"/> for later
 /// consumption by the rest of the application or for test assertions.
 /// </summary>
-public sealed class WindowNotificationHandler : ILspNotificationHandler
+public sealed class WindowNotificationHandler : IRpcLocalTarget
 {
     /// <summary>
     /// Gets the queue that accumulates all <see cref="LogMessageParams"/> that

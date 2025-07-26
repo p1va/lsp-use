@@ -38,10 +38,10 @@ public class WindowLogMessagesToolTests
         services.AddSingleton(Options.Create(testConfig));
 
         // Add notification handlers
-        services.AddSingleton<ILspNotificationHandler, WindowNotificationHandler>()
-            .AddSingleton<ILspNotificationHandler, DiagnosticsNotificationHandler>()
-            .AddSingleton<ILspNotificationHandler, WorkspaceNotificationHandler>()
-            .AddSingleton<ILspNotificationHandler, ClientCapabilityRegistrationHandler>();
+        services.AddSingleton<IRpcLocalTarget, WindowNotificationHandler>()
+            .AddSingleton<IRpcLocalTarget, DiagnosticsNotificationHandler>()
+            .AddSingleton<IRpcLocalTarget, WorkspaceNotificationHandler>()
+            .AddSingleton<IRpcLocalTarget, ClientCapabilityRegistrationHandler>();
 
         // Add ApplicationService
         services.AddSingleton<IApplicationService, ApplicationService>();

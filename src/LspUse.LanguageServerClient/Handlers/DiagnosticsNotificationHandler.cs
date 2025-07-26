@@ -6,7 +6,7 @@ using StreamJsonRpc;
 namespace LspUse.LanguageServerClient.Handlers;
 
 public sealed class DiagnosticsNotificationHandler(ILogger<DiagnosticsNotificationHandler> logger)
-    : ILspNotificationHandler
+    : IRpcLocalTarget
 {
     public ConcurrentDictionary<Uri, DiagnosticNotification> LatestDiagnostics { get; } = new();
 

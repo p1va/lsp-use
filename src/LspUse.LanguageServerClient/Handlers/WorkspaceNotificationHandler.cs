@@ -8,7 +8,7 @@ namespace LspUse.LanguageServerClient.Handlers;
 /// notification which signals that the workspace is fully loaded and ready
 /// for requests such as completion, references, etc.
 /// </summary>
-public sealed class WorkspaceNotificationHandler : ILspNotificationHandler
+public sealed class WorkspaceNotificationHandler : IRpcLocalTarget
 {
     private readonly TaskCompletionSource _initializationTcs = new();
 

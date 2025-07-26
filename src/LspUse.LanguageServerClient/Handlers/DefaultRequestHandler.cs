@@ -21,7 +21,7 @@ public record UnhandledRequest
 /// This class implements TryInvokeMember to intercept request method calls that don't have specific handlers
 /// and provides appropriate default responses to prevent JSON-RPC "method not found" errors.
 /// </summary>
-public sealed class DefaultRequestHandler : DynamicObject, ILspNotificationHandler
+public sealed class DefaultRequestHandler : DynamicObject, IRpcLocalTarget
 {
     /// <summary>
     /// Gets a thread-safe collection of all unhandled requests that have been caught.

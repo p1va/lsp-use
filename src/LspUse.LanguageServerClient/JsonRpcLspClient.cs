@@ -1,3 +1,8 @@
+using System.Diagnostics;
+using LspUse.LanguageServerClient.Handlers;
+using LspUse.LanguageServerClient.Json;
+using Microsoft.Extensions.Logging;
+
 namespace LspUse.LanguageServerClient;
 
 using System.Text.Json.Nodes;
@@ -10,12 +15,75 @@ using StreamJsonRpc;
 /// connected to the standard input/output (or any stream pair) of a running
 /// Language-Server process.
 /// </summary>
-public sealed class JsonRpcLspClient : ILspClient, IAsyncDisposable, IDisposable
+public sealed class JsonRpcLspClient : ILspClient
 {
+    private readonly ILogger<JsonRpcLspClient> _logger;
+    private readonly IEnumerable<IRpcLocalTarget> _localTargets;
     private readonly JsonRpc _rpc;
 
-    public JsonRpcLspClient(JsonRpc rpc) =>
-        _rpc = rpc ?? throw new ArgumentNullException(nameof(rpc));
+    public WorkspaceNotificationHandler Workspace =>
+        GetHandler<WorkspaceNotificationHandler>() ??
+        throw new InvalidOperationException("Notification handler not registered.");
+
+    public WindowNotificationHandler Window =>
+        GetHandler<WindowNotificationHandler>() ??
+        throw new InvalidOperationException("Notification handler not registered.");
+
+    public ClientCapabilityRegistrationHandler ClientCapability =>
+        GetHandler<ClientCapabilityRegistrationHandler>() ??
+        throw new InvalidOperationException("Notification handler not registered.");
+
+    public DiagnosticsNotificationHandler Diagnostics =>
+        GetHandler<DiagnosticsNotificationHandler>() ??
+        throw new InvalidOperationException("Notification handler not registered.");
+
+    public DefaultNotificationHandler UnhandledNotifications =>
+        GetHandler<DefaultNotificationHandler>() ??
+        throw new InvalidOperationException("Notification handler not registered.");
+
+    public DefaultRequestHandler UnhandledRequests =>
+        GetHandler<DefaultRequestHandler>() ??
+        throw new InvalidOperationException("Request handler not registered.");
+
+    private T? GetHandler<T>() where T : IRpcLocalTarget =>
+        _localTargets
+            .OfType<T>()
+            .FirstOrDefault();
+
+    public JsonRpcLspClient(Stream stdin,
+        Stream stdout,
+        ILogger<JsonRpcLspClient> logger,
+        IEnumerable<IRpcLocalTarget> localTargets)
+    {
+        ArgumentNullException.ThrowIfNull(stdin);
+        ArgumentNullException.ThrowIfNull(stdout);
+        ArgumentNullException.ThrowIfNull(logger);
+        ArgumentNullException.ThrowIfNull(localTargets);
+
+        _logger = logger;
+        _localTargets = localTargets;
+
+        var formatter = new SystemTextJsonFormatter();
+        formatter.JsonSerializerOptions.Converters.Add(new AbsoluteUriJsonConverter());
+
+        var handler = new HeaderDelimitedMessageHandler(stdin, stdout, formatter);
+
+        _rpc = new JsonRpc(handler);
+
+        foreach (var target in _localTargets)
+            _rpc.AddLocalRpcTarget(target);
+
+        // Enable trace logging for LSP communication
+        _rpc.TraceSource.Switch.Level = SourceLevels.All;
+        _rpc.TraceSource.Listeners.Add(new LoggerTraceListener(_logger));
+        _rpc.Disconnected += (sender, args) => _logger.LogError(args.Exception,
+            "DISCONNECTED: {Description} {Reason}",
+            args.Description,
+            args.Reason
+        );
+
+        _rpc.StartListening();
+    }
 
     public Task DidOpenAsync(DidOpenTextDocumentParams @params, CancellationToken ct = default)
     {
@@ -39,7 +107,8 @@ public sealed class JsonRpcLspClient : ILspClient, IAsyncDisposable, IDisposable
         return ct.IsCancellationRequested ? Task.FromCanceled(ct) : task;
     }
 
-    private Task<T> InvokeAsync<T>(string methodName, object @params,
+    private Task<T> InvokeAsync<T>(string methodName,
+        object @params,
         CancellationToken cancellationToken) =>
         _rpc.InvokeWithParameterObjectAsync<T>(methodName, @params, cancellationToken);
 
@@ -67,65 +136,84 @@ public sealed class JsonRpcLspClient : ILspClient, IAsyncDisposable, IDisposable
 
     public Task<Location[]> DefinitionAsync(DocumentClientRequest @params,
         CancellationToken ct = default) =>
-        InvokeAsync<Location[]>("textDocument/definition", new TextDocumentPositionParams
-        {
-            TextDocument = @params.Document.ToDocumentIdentifier(),
-            Position = @params.Position
-        }, ct);
+        InvokeAsync<Location[]>("textDocument/definition",
+            new TextDocumentPositionParams
+            {
+                TextDocument = @params.Document.ToDocumentIdentifier(),
+                Position = @params.Position,
+            },
+            ct
+        );
 
     public Task<Location[]> TypeDefinitionAsync(DocumentClientRequest @params,
         CancellationToken ct = default) =>
-        InvokeAsync<Location[]>("textDocument/typeDefinition", new TextDocumentPositionParams
-        {
-            TextDocument = @params.Document.ToDocumentIdentifier(),
-            Position = @params.Position
-        }, ct);
+        InvokeAsync<Location[]>("textDocument/typeDefinition",
+            new TextDocumentPositionParams
+            {
+                TextDocument = @params.Document.ToDocumentIdentifier(),
+                Position = @params.Position,
+            },
+            ct
+        );
 
     public Task<Location[]> ImplementationAsync(DocumentClientRequest @params,
         CancellationToken ct = default) =>
-        InvokeAsync<Location[]>("textDocument/implementation", new TextDocumentPositionParams
-        {
-            TextDocument = @params.Document.ToDocumentIdentifier(),
-            Position = @params.Position
-        }, ct);
+        InvokeAsync<Location[]>("textDocument/implementation",
+            new TextDocumentPositionParams
+            {
+                TextDocument = @params.Document.ToDocumentIdentifier(),
+                Position = @params.Position,
+            },
+            ct
+        );
 
     public Task<Location[]> ReferencesAsync(DocumentClientRequest args,
         CancellationToken ct = default) =>
-        InvokeAsync<Location[]>("textDocument/references", new ReferenceParams
-        {
-            TextDocument = args.Document.ToDocumentIdentifier(),
-            Position = args.Position,
-            Context = new ReferenceContext
+        InvokeAsync<Location[]>("textDocument/references",
+            new ReferenceParams
             {
-                IncludeDeclaration = true
-            }
-        }, ct);
+                TextDocument = args.Document.ToDocumentIdentifier(),
+                Position = args.Position,
+                Context = new ReferenceContext
+                {
+                    IncludeDeclaration = true,
+                },
+            },
+            ct
+        );
 
     public Task<Hover?> HoverAsync(DocumentClientRequest @params, CancellationToken ct = default) =>
-        InvokeAsync<Hover?>("textDocument/hover", new TextDocumentPositionParams
-        {
-            TextDocument = @params.Document.ToDocumentIdentifier(),
-            Position = @params.Position
-        }, ct);
+        InvokeAsync<Hover?>("textDocument/hover",
+            new TextDocumentPositionParams
+            {
+                TextDocument = @params.Document.ToDocumentIdentifier(),
+                Position = @params.Position,
+            },
+            ct
+        );
 
     public Task<CompletionList?> CompletionAsync(DocumentClientRequest @params,
         CancellationToken ct = default) =>
-        InvokeAsync<CompletionList?>("textDocument/completion", new CompletionParams
-        {
-            TextDocument = @params.Document.ToDocumentIdentifier(),
-            Position = @params.Position,
-            Context = new CompletionContext
+        InvokeAsync<CompletionList?>("textDocument/completion",
+            new CompletionParams
             {
-                TriggerKind = CompletionTriggerKind.Invoked
-            }
-        }, ct);
+                TextDocument = @params.Document.ToDocumentIdentifier(),
+                Position = @params.Position,
+                Context = new CompletionContext
+                {
+                    TriggerKind = CompletionTriggerKind.Invoked,
+                },
+            },
+            ct
+        );
 
     public Task<SymbolInformation[]?> DocumentSymbolAsync(DocumentSymbolParams @params,
         CancellationToken ct = default) =>
         InvokeAsync<SymbolInformation[]?>("textDocument/documentSymbol", @params, ct);
 
     public Task<IEnumerable<WorkspaceSymbolResult>> WorkspaceSymbolAsync(
-        WorkspaceSymbolParams @params, CancellationToken ct = default) =>
+        WorkspaceSymbolParams @params,
+        CancellationToken ct = default) =>
         InvokeAsync<IEnumerable<WorkspaceSymbolResult>>("workspace/symbol", @params, ct);
 
     public Task<FullDocumentDiagnosticReport?> DiagnosticAsync(TextDocumentDiagnosticParams @params,
@@ -140,16 +228,21 @@ public sealed class JsonRpcLspClient : ILspClient, IAsyncDisposable, IDisposable
         InvokeAsync<PrepareRenameResult?>("textDocument/prepareRename", @params, ct);
 
     public Task ShutdownAsync(CancellationToken ct = default) =>
-        InvokeAsync<object>("shutdown", new
-        {
-        }, ct);
+        InvokeAsync<object>("shutdown",
+            new
+            {
+            },
+            ct
+        );
 
     public Task ExitAsync(CancellationToken ct = default)
     {
         ct.ThrowIfCancellationRequested();
-        var task = NotifyAsync("exit", new
-        {
-        });
+        var task = NotifyAsync("exit",
+            new
+            {
+            }
+        );
 
         return ct.IsCancellationRequested ? Task.FromCanceled(ct) : task;
     }

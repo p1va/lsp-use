@@ -7,9 +7,7 @@ namespace LspUse.Application;
 public interface IApplicationService : IAsyncDisposable
 {
     Task InitialiseAsync(CancellationToken cancellationToken = default);
-
-    Task WaitForWorkspaceReadyAsync(CancellationToken ct = default);
-
+    
     Task<OneOf<FindReferencesSuccess, ApplicationServiceError>> FindReferencesAsync(
         FindReferencesRequest request, CancellationToken cancellationToken = default);
 

@@ -1,3 +1,5 @@
+using LspUse.LanguageServerClient.Handlers;
+
 namespace LspUse.LanguageServerClient;
 
 using Models;
@@ -8,8 +10,15 @@ using Models;
 /// proxy is exposed; more methods can be added incrementally as new
 /// capabilities are needed.
 /// </summary>
-public interface ILspClient
+public interface ILspClient : IAsyncDisposable, IDisposable
 {
+    WorkspaceNotificationHandler Workspace { get; }
+    WindowNotificationHandler Window { get; }
+    ClientCapabilityRegistrationHandler ClientCapability { get; }
+    DiagnosticsNotificationHandler Diagnostics { get; }
+    DefaultNotificationHandler UnhandledNotifications { get; }
+    DefaultRequestHandler UnhandledRequests { get; }
+
     /// <summary>Sends <c>textDocument/didOpen</c>.</summary>
     Task DidOpenAsync(DidOpenTextDocumentParams @params, CancellationToken ct = default);
 
@@ -18,8 +27,12 @@ public interface ILspClient
 
     /// <summary>Requests <c>textDocument/definition</c>.</summary>
     Task<Location[]> DefinitionAsync(DocumentClientRequest @params, CancellationToken ct = default);
-    Task<Location[]> TypeDefinitionAsync(DocumentClientRequest @params, CancellationToken ct = default);
-    Task<Location[]> ImplementationAsync(DocumentClientRequest @params, CancellationToken ct = default);
+
+    Task<Location[]> TypeDefinitionAsync(DocumentClientRequest @params,
+        CancellationToken ct = default);
+
+    Task<Location[]> ImplementationAsync(DocumentClientRequest @params,
+        CancellationToken ct = default);
 
     /// <summary>Requests <c>textDocument/references</c>.</summary>
     Task<Location[]> ReferencesAsync(DocumentClientRequest @params, CancellationToken ct = default);
@@ -28,13 +41,16 @@ public interface ILspClient
     Task<Hover?> HoverAsync(DocumentClientRequest @params, CancellationToken ct = default);
 
     /// <summary>Requests <c>textDocument/completion</c>.</summary>
-    Task<CompletionList?> CompletionAsync(DocumentClientRequest @params, CancellationToken ct = default);
+    Task<CompletionList?> CompletionAsync(DocumentClientRequest @params,
+        CancellationToken ct = default);
 
     /// <summary>Requests <c>textDocument/documentSymbol</c> for the given document.</summary>
-    Task<SymbolInformation[]?> DocumentSymbolAsync(DocumentSymbolParams @params, CancellationToken ct = default);
+    Task<SymbolInformation[]?> DocumentSymbolAsync(DocumentSymbolParams @params,
+        CancellationToken ct = default);
 
     /// <summary>Requests <c>workspace/symbol</c> to search for symbols across the workspace.</summary>
-    Task<IEnumerable<WorkspaceSymbolResult>> WorkspaceSymbolAsync(WorkspaceSymbolParams @params, CancellationToken ct = default);
+    Task<IEnumerable<WorkspaceSymbolResult>> WorkspaceSymbolAsync(WorkspaceSymbolParams @params,
+        CancellationToken ct = default);
 
     /// <summary>Requests pull diagnostics for the specified document.</summary>
     Task<FullDocumentDiagnosticReport?> DiagnosticAsync(TextDocumentDiagnosticParams @params,
@@ -44,14 +60,16 @@ public interface ILspClient
     Task<WorkspaceEdit?> RenameAsync(RenameParams @params, CancellationToken ct = default);
 
     /// <summary>Requests <c>textDocument/prepareRename</c> to prepare and validate a rename operation.</summary>
-    Task<PrepareRenameResult?> PrepareRenameAsync(PrepareRenameParams @params, CancellationToken ct = default);
+    Task<PrepareRenameResult?> PrepareRenameAsync(PrepareRenameParams @params,
+        CancellationToken ct = default);
 
     /// <summary>
     /// Performs the mandatory LSP handshake by sending the <c>initialize</c>
     /// request. The returned JSON payload contains the server capabilities and
     /// any custom extension data published by the server.
     /// </summary>
-    Task<System.Text.Json.Nodes.JsonNode> InitializeAsync(object @params, CancellationToken ct = default);
+    Task<System.Text.Json.Nodes.JsonNode> InitializeAsync(object @params,
+        CancellationToken ct = default);
 
     /// <summary>
     /// Sends the <c>initialized</c> notification that finalises the LSP

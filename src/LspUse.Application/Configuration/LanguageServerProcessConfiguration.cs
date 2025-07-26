@@ -6,18 +6,14 @@ namespace LspUse.Application.Configuration;
 /// workspace selectors – <see cref="SolutionPath"/> or <see cref="ProjectPaths"/>
 /// – must be provided (one-of semantics).
 /// </summary>
-public record LanguageServerProcessConfiguration
+public record LanguageServerConfiguration : LanguageServerClient.LanguageServerProcessConfiguration
 {
-    public required string Command { get; init; }
-    public required IEnumerable<string>? Arguments { get; init; }
-    public required string WorkspacePath { get; init; }
     public string? SolutionPath { get; init; }
     public IReadOnlyList<string>? ProjectPaths { get; init; }
     public string? ProfileName { get; init; }
-    public Dictionary<string, string>? Environment { get; init; }
 
     public override string ToString() =>
-        $"{Command} {string.Join(' ', Arguments ?? [])} " + $"Workspace Path: {WorkspacePath} " +
+        $"{Command} {string.Join(' ', Arguments ?? [])} " + $"Workspace Path: {WorkingDirectory} " +
         $"Solution Path: {SolutionPath} " +
         $"Project Paths: {string.Join(' ', ProjectPaths ?? [])}";
 }

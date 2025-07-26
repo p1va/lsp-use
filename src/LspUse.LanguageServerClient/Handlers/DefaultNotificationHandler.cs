@@ -19,7 +19,7 @@ public record UnhandledNotification
 /// This class implements TryInvokeMember to intercept any method calls that don't have specific handlers.
 /// It can be registered with StreamJsonRpc using AddLocalRpcTarget to act as a catch-all.
 /// </summary>
-public sealed class DefaultNotificationHandler : DynamicObject, ILspNotificationHandler
+public sealed class DefaultNotificationHandler : DynamicObject, IRpcLocalTarget
 {
     /// <summary>
     /// Gets a thread-safe collection of all unhandled notifications that have been caught.
