@@ -12,7 +12,7 @@ namespace LspUse.TestHarness;
 /// </summary>
 internal sealed class LspTestContext : IAsyncDisposable
 {
-    public JsonRpc Rpc { get; }
+    public JsonRpc Rpc => Client.Rpc;
 
     /// <summary>
     /// Strongly-typed LSP client facade that wraps <see cref="Rpc"/>.
@@ -28,11 +28,10 @@ internal sealed class LspTestContext : IAsyncDisposable
 
     private readonly Process _lspProcess;
 
-    public LspTestContext(JsonRpc rpc, WindowNotificationHandler window,
+    public LspTestContext(WindowNotificationHandler window,
         DiagnosticsNotificationHandler diagnostics, WorkspaceNotificationHandler workspace,
         ClientCapabilityRegistrationHandler capabilityRegistration, Process lspProcess, ILspClient client)
     {
-        Rpc = rpc;
         Window = window;
         Diagnostics = diagnostics;
         Workspace = workspace;

@@ -25,7 +25,7 @@ internal static class TypescriptLspTestHelpers
             UseShellExecute = false,
             RedirectStandardInput = true,
             RedirectStandardOutput = true,
-            RedirectStandardError = true
+            RedirectStandardError = true,
         };
 
         psi.ArgumentList.Add("--stdio");
@@ -35,35 +35,24 @@ internal static class TypescriptLspTestHelpers
         proc.ErrorDataReceived += (_, e) => outputHelper.WriteLine("[stderr] " + e.Data);
         proc.BeginErrorReadLine();
 
-        // JsonRpc wiring ------------------------------------
-        // Use custom JSON options so that Uri values are serialised using their
-        // absolute form ("file:///..."), which Roslyn LSP expects.
-        var formatter = new SystemTextJsonFormatter();
-        formatter.JsonSerializerOptions.Converters.Add(new AbsoluteUriJsonConverter());
-
-        var messageHandler = new HeaderDelimitedMessageHandler(proc.StandardInput.BaseStream,
-            proc.StandardOutput.BaseStream, formatter);
-
         var windowHandler = new WindowNotificationHandler();
-        var diagnosticsHandler = new DiagnosticsNotificationHandler(NullLogger<DiagnosticsNotificationHandler>.Instance);
+        var diagnosticsHandler =
+            new DiagnosticsNotificationHandler(NullLogger<DiagnosticsNotificationHandler>.Instance);
         var workspaceHandler = new WorkspaceNotificationHandler();
         var capabilityRegistrationHandler = new ClientCapabilityRegistrationHandler();
         var defaultNotificationHandler = new DefaultNotificationHandler();
 
-        var rpc = new JsonRpc(messageHandler);
-        rpc.AddLocalRpcTarget(windowHandler);
-        rpc.AddLocalRpcTarget(diagnosticsHandler);
-        rpc.AddLocalRpcTarget(workspaceHandler);
-        rpc.AddLocalRpcTarget(capabilityRegistrationHandler);
-        rpc.AddLocalRpcTarget(defaultNotificationHandler);
-
-        rpc.TraceSource.Switch.Level = SourceLevels.All;
-        rpc.TraceSource.Listeners.Add(
-            new ActionTraceListener(m => outputHelper.WriteLine("[trace] " + m)));
-
-        rpc.StartListening();
-
-        var lsp = new JsonRpcLspClient(rpc);
+        var lsp = new JsonRpcLspClient(proc.StandardInput.BaseStream,
+            proc.StandardOutput.BaseStream,
+            NullLogger<JsonRpcLspClient>.Instance,
+            [
+                windowHandler,
+                diagnosticsHandler,
+                workspaceHandler,
+                capabilityRegistrationHandler,
+                defaultNotificationHandler,
+            ]
+        );
 
         // LSP initialize handshake -------------------------
         // We build an anonymous capabilities object so we can include the
@@ -73,38 +62,45 @@ internal static class TypescriptLspTestHelpers
         // ignore the rest.
 
         var serverCapabilities = await lsp.InitializeAsync(new
-        {
-            processId = Environment.ProcessId,
-            rootUri = new Uri("/path/to/repo"),
-            capabilities = new
             {
-                workspace = new
+                processId = Environment.ProcessId,
+                rootUri = new Uri("/path/to/repo"),
+                capabilities = new
                 {
-                },
-                textDocument = new
-                {
-                    publishDiagnostics = new
+                    workspace = new
                     {
-                        relatedInformation = true,
-                        versionSupport = true,
-                        codeDescriptionSupport = true,
-                        dataSupport = true
                     },
-                    diagnostic = new
+                    textDocument = new
                     {
-                        dynamicRegistration = true,
-                        relatedDocumentSupport = true
-                    }
-                }
+                        publishDiagnostics = new
+                        {
+                            relatedInformation = true,
+                            versionSupport = true,
+                            codeDescriptionSupport = true,
+                            dataSupport = true,
+                        },
+                        diagnostic = new
+                        {
+                            dynamicRegistration = true,
+                            relatedDocumentSupport = true,
+                        },
+                    },
+                },
             }
-        });
+        );
 
         // empty params per LSP
         await lsp.InitializedAsync(new
-        {
-        });
+            {
+            }
+        );
 
-        return new LspTestContext(rpc, windowHandler, diagnosticsHandler, workspaceHandler,
-            capabilityRegistrationHandler, proc, lsp);
+        return new LspTestContext(windowHandler,
+            diagnosticsHandler,
+            workspaceHandler,
+            capabilityRegistrationHandler,
+            proc,
+            lsp
+        );
     }
 }

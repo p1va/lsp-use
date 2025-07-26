@@ -1,4 +1,5 @@
 using LspUse.LanguageServerClient.Handlers;
+using StreamJsonRpc;
 
 namespace LspUse.LanguageServerClient;
 
@@ -12,6 +13,7 @@ using Models;
 /// </summary>
 public interface ILspClient : IAsyncDisposable, IDisposable
 {
+    JsonRpc Rpc { get; }
     WorkspaceNotificationHandler Workspace { get; }
     WindowNotificationHandler Window { get; }
     ClientCapabilityRegistrationHandler ClientCapability { get; }

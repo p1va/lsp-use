@@ -335,3 +335,8 @@ The tools can be combined to create productive workflows or Claude commands.
 - **`mcp__csharp__find_references(symbol)` → `mcp__csharp__rename_symbol(filePath, line, character, newName)`**
 - **Use case**: Safely renaming symbols across the entire codebase  
 - **Value**: Automated refactoring with LSP-level accuracy and safety
+
+### Namespace & API Exploration
+- **`mcp__csharp__completion(LspUse.)` → `mcp__csharp__completion(LspUse.Application.)` → `mcp__csharp__completion(LspUse.Application.Models.)`**
+- **Use case**: Discovering available namespaces, classes, and members in unfamiliar codebases
+- **Value**: Progressive drilling down through namespace hierarchies with precise cursor positioning and symbol kind breakdown (methods, classes, interfaces, etc.)

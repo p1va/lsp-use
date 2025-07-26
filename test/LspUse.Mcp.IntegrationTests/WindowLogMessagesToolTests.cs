@@ -26,14 +26,14 @@ public class WindowLogMessagesToolTests
         services.AddLogging();
 
         // Configure ApplicationService dependencies for testing
-        var testConfig = new LanguageServerProcessConfiguration
+        var testConfig = new LanguageServerConfiguration
         {
             Command = "dotnet",
             Arguments = new[]
             {
                 "test.dll"
             },
-            WorkspacePath = "/tmp"
+            WorkingDirectory = "/tmp"
         };
         services.AddSingleton(Options.Create(testConfig));
 

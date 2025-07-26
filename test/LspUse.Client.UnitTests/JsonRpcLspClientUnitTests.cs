@@ -1,5 +1,6 @@
 using LspUse.LanguageServerClient;
 using LspUse.LanguageServerClient.Models;
+using Microsoft.Extensions.Logging.Abstractions;
 using Nerdbank.Streams;
 using StreamJsonRpc;
 using Xunit;
@@ -8,13 +9,10 @@ namespace LspUse.Client.UnitTests;
 
 public sealed class JsonRpcLspClientUnitTests
 {
-    private static (JsonRpc clientRpc, JsonRpc serverRpc) CreateConnectedRpcs(object serverTarget)
+    private static (Stream client, JsonRpc serverRpc) CreateConnectedRpcs(object serverTarget)
     {
         // Create an in-memory full-duplex stream pair.
         var (stream1, stream2) = FullDuplexStream.CreatePair();
-
-        var formatter1 = new JsonMessageFormatter();
-        var handler1 = new HeaderDelimitedMessageHandler(stream1, stream1, formatter1);
 
         var formatter2 = new JsonMessageFormatter();
         var handler2 = new HeaderDelimitedMessageHandler(stream2, stream2, formatter2);
@@ -22,10 +20,7 @@ public sealed class JsonRpcLspClientUnitTests
         var serverRpc = new JsonRpc(handler2, serverTarget);
         serverRpc.StartListening();
 
-        var clientRpc = new JsonRpc(handler1);
-        clientRpc.StartListening();
-
-        return (clientRpc, serverRpc);
+        return (stream1, serverRpc);
     }
 
     private static DidOpenTextDocumentParams SampleDidOpen() =>
@@ -36,8 +31,8 @@ public sealed class JsonRpcLspClientUnitTests
                 Uri = new Uri("file:///tmp/foo.cs"),
                 LanguageId = "csharp",
                 Version = 1,
-                Text = "class Foo {}"
-            }
+                Text = "class Foo {}",
+            },
         };
 
     [Fact]
@@ -48,11 +43,15 @@ public sealed class JsonRpcLspClientUnitTests
 
         var serverTarget = new NotificationRecorder(tcs);
 
-        var (clientRpc, serverRpc) = CreateConnectedRpcs(serverTarget);
-        using var _ = clientRpc;
+        var (clientStream, serverRpc) = CreateConnectedRpcs(serverTarget);
+        using var _ = clientStream;
         using var __ = serverRpc;
 
-        var client = new JsonRpcLspClient(clientRpc);
+        var client = new JsonRpcLspClient(clientStream,
+            clientStream,
+            NullLogger<JsonRpcLspClient>.Instance,
+            []
+        );
 
         var payload = SampleDidOpen();
 
@@ -89,33 +88,38 @@ public sealed class JsonRpcLspClientUnitTests
                     Start = new ZeroBasedPosition
                     {
                         Line = 1,
-                        Character = 2
+                        Character = 2,
                     },
                     End = new ZeroBasedPosition
                     {
                         Line = 1,
-                        Character = 5
-                    }
-                }
-            }
+                        Character = 5,
+                    },
+                },
+            },
         };
 
         var serverTarget = new DefinitionResponder(expected);
-        var (clientRpc, serverRpc) = CreateConnectedRpcs(serverTarget);
-        using var _ = clientRpc;
+        var (clientStream, serverRpc) = CreateConnectedRpcs(serverTarget);
+        using var _ = clientStream;
         using var __ = serverRpc;
 
-        var client = new JsonRpcLspClient(clientRpc);
-
+        var client = new JsonRpcLspClient(clientStream,
+            clientStream,
+            NullLogger<JsonRpcLspClient>.Instance,
+            []
+        );
+        
         var result = await client.DefinitionAsync(new DocumentClientRequest
-        {
-            Document = new Uri("file:///tmp/foo.cs"),
-            Position = new ZeroBasedPosition
             {
-                Line = 0,
-                Character = 0
+                Document = new Uri("file:///tmp/foo.cs"),
+                Position = new ZeroBasedPosition
+                {
+                    Line = 0,
+                    Character = 0,
+                },
             }
-        });
+        );
 
         Assert.Equal(expected, result);
     }

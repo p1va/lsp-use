@@ -20,6 +20,8 @@ public sealed class JsonRpcLspClient : ILspClient
     private readonly ILogger<JsonRpcLspClient> _logger;
     private readonly IEnumerable<IRpcLocalTarget> _localTargets;
     private readonly JsonRpc _rpc;
+    
+    public JsonRpc Rpc => _rpc;
 
     public WorkspaceNotificationHandler Workspace =>
         GetHandler<WorkspaceNotificationHandler>() ??

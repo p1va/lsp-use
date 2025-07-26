@@ -37,32 +37,10 @@ public class LanguageServerManager : ILanguageServerManager
 
     public void Start()
     {
+        // Spawn the language server process
         _process.Start();
 
-        var jsonFormatter = new SystemTextJsonFormatter();
-        jsonFormatter.JsonSerializerOptions.Converters.Add(new AbsoluteUriJsonConverter());
-
-        var messageHandler = new HeaderDelimitedMessageHandler(_process.StandardInput,
-            _process.StandardOutput,
-            jsonFormatter
-        );
-
-        var rpc = new JsonRpc(messageHandler);
-
-        foreach (var target in _localTargets)
-            rpc.AddLocalRpcTarget(target);
-
-        // Enable trace logging for LSP communication
-        rpc.TraceSource.Switch.Level = SourceLevels.All;
-        rpc.TraceSource.Listeners.Add(new LoggerTraceListener(_logger));
-        rpc.Disconnected += (sender, args) => _logger.LogError(args.Exception,
-            "DISCONNECTED: {Description} {Reason}",
-            args.Description,
-            args.Reason
-        );
-
-        rpc.StartListening();
-
+        // Create a client to communicatw with it
         _client = new JsonRpcLspClient(_process.StandardInput,
             _process.StandardOutput,
             _loggerFactory.CreateLogger<JsonRpcLspClient>(),
