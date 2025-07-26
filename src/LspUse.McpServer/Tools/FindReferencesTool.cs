@@ -3,8 +3,8 @@ using System.Text;
 using LspUse.Application;
 using LspUse.Application.Models;
 using Microsoft.Extensions.Logging;
-using ModelContextProtocol.Server;
 using ModelContextProtocol.Protocol;
+using ModelContextProtocol.Server;
 using OneOf;
 
 namespace LspUse.McpServer.Tools;
@@ -32,7 +32,7 @@ public static class FindReferencesTool
     public static async Task<IEnumerable<TextContentBlock>> FindReferencesAsync(
         IApplicationService service, ILoggerFactory loggerFactory,
         [Description(ToolArgDescFilePath)] string file, [Description(ToolArgDescLine)] uint line,
-        [Description(ToolArgDescCharacter)] uint character, 
+        [Description(ToolArgDescCharacter)] uint character,
         CancellationToken cancellationToken = default)
     {
         var logger = loggerFactory.CreateLogger("FindReferencesTool");
@@ -56,7 +56,7 @@ public static class FindReferencesTool
             {
                 var references = success.Value;
                 logger.LogInformation("MCP FindReferencesTool returning {Count} references", references.Count());
-                
+
                 if (!references.Any())
                 {
                     return [new TextContentBlock { Text = $"Found 0 references for symbol at {GetRelativeFilePath(file)}:{line}:{character}" }];
@@ -111,26 +111,26 @@ public static class FindReferencesTool
         {
             var filePath = GetRelativeFilePath(fileGroup.Key);
             var referencesInFile = fileGroup.OrderBy(r => r.StartLine).ToList();
-            
+
             var fileHeader = $"{filePath} ({referencesInFile.Count} reference{(referencesInFile.Count != 1 ? "s" : "")})";
-            
+
             var sb = new StringBuilder(fileHeader);
-            
+
             foreach (var reference in referencesInFile)
             {
                 var line = reference.StartLine ?? 0; // Already 1-based
                 var character = reference.StartCharacter ?? 0; // Already 1-based
-                
+
                 sb.AppendLine();
                 sb.Append($"  {line}:{character}");
-                
+
                 if (!string.IsNullOrWhiteSpace(reference.Text))
                 {
                     sb.Append($" - {reference.Text.Trim()}");
                 }
-                
+
             }
-            
+
             yield return new TextContentBlock { Text = sb.ToString() };
         }
     }

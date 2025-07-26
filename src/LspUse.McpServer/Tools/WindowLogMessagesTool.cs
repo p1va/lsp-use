@@ -34,7 +34,7 @@ public static class WindowLogMessagesTool
         return result.Match<IEnumerable<TextContentBlock>>(success =>
             {
                 var logMessages = success.LogMessages.ToList();
-                
+
                 if (!logMessages.Any())
                 {
                     return [new TextContentBlock { Text = "No log messages available" }];
@@ -90,7 +90,7 @@ public static class WindowLogMessagesTool
     {
         var messageType = msg.MessageType.ToString().ToUpper();
         var formattedMessage = msg.Message.Trim();
-        
+
         // Extract source/context information if available (format: [source] message)
         if (formattedMessage.StartsWith('[') && formattedMessage.Contains(']'))
         {
@@ -102,7 +102,7 @@ public static class WindowLogMessagesTool
                 return $"[{messageType}] {source}: {content}";
             }
         }
-        
+
         return $"[{messageType}] {formattedMessage}";
     }
 }

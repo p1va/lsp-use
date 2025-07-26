@@ -50,7 +50,7 @@ public static class SearchSymbolTool
                 var totalFiles = symbolsByFile.Count;
 
                 var resultsText = totalMatches == 1 ? "result" : "results";
-                var summaryText = totalMatches == 0 
+                var summaryText = totalMatches == 0
                     ? $"Found 0 results for \"{query}\""
                     : $"Found {totalMatches} {resultsText} for \"{query}\" across {totalFiles} {(totalFiles == 1 ? "file" : "files")}:\n";
 

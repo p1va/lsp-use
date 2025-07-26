@@ -80,18 +80,18 @@ public static class HoverTool
         if (success.Symbol != null)
         {
             var symbolInfo = new StringBuilder();
-            
+
             // Format: Name (Kind) @line:character or @line:start-end if range spans
             var location = success.Symbol.Location;
             var positionInfo = "";
-            
+
             if (location != null)
             {
                 var startLine = location.StartLine ?? 0;
                 var startChar = location.StartCharacter ?? 0;
                 var endLine = location.EndLine ?? 0;
                 var endChar = location.EndCharacter ?? 0;
-                
+
                 // Show range if it spans multiple characters or lines
                 if (startLine != endLine || startChar != endChar)
                 {
@@ -113,9 +113,9 @@ public static class HoverTool
             {
                 positionInfo = $"@{line}:{character}";
             }
-            
+
             symbolInfo.AppendLine($"{success.Symbol.Name} ({success.Symbol.Kind}) {positionInfo}");
-            
+
             if (!string.IsNullOrEmpty(success.Symbol.ContainerName))
             {
                 symbolInfo.AppendLine($"Container: {success.Symbol.ContainerName}");

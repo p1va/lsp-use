@@ -36,7 +36,7 @@ public static class GetSymbolsTool
             {
                 var symbols = success.Symbols.ToList();
                 logger.LogInformation("MCP DocumentSymbolsTool returning {Count} symbols", symbols.Count);
-                
+
                 if (!symbols.Any())
                 {
                     return [new TextContentBlock { Text = $"No symbols found in file: {GetRelativeFilePath(file)}" }];
@@ -79,16 +79,16 @@ public static class GetSymbolsTool
     {
         // Sort symbols by line number first to maintain source order
         var sortedSymbols = symbols.OrderBy(s => s.Location?.StartLine ?? 0).ToList();
-        
+
         // Build the tree representation using depth for indentation
         var lines = new List<string>();
-        
+
         foreach (var symbol in sortedSymbols)
         {
             var indent = new string(' ', symbol.Depth * 2); // 2 spaces per depth level
             var formattedSymbol = $"{indent}{symbol.Name} ({symbol.Kind}) @{symbol.Location?.StartLine}:{symbol.Location?.StartCharacter}";
             lines.Add(formattedSymbol);
-            
+
             // Add code snippet if requested and available
             if (showCode && !string.IsNullOrEmpty(symbol.Location?.Text))
             {
@@ -101,8 +101,8 @@ public static class GetSymbolsTool
         // Group lines into blocks to avoid overly long single blocks
         const int maxLinesPerBlock = 25;
         var blocks = new List<TextContentBlock>();
-        
-        for (int i = 0; i < lines.Count; i += maxLinesPerBlock)
+
+        for (var i = 0; i < lines.Count; i += maxLinesPerBlock)
         {
             var blockLines = lines.Skip(i).Take(maxLinesPerBlock);
             blocks.Add(new TextContentBlock { Text = string.Join("\n", blockLines) });
@@ -117,7 +117,7 @@ public static class GetSymbolsTool
         try
         {
             var currentDir = Directory.GetCurrentDirectory();
-            
+
             if (Path.IsPathRooted(filePath) && filePath.StartsWith(currentDir, StringComparison.OrdinalIgnoreCase))
             {
                 return Path.GetRelativePath(currentDir, filePath);
@@ -127,7 +127,7 @@ public static class GetSymbolsTool
         {
             // Fall back to original path if any error occurs
         }
-        
+
         return filePath;
     }
 

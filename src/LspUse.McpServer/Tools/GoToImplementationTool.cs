@@ -3,8 +3,8 @@ using System.Text;
 using LspUse.Application;
 using LspUse.Application.Models;
 using Microsoft.Extensions.Logging;
-using ModelContextProtocol.Server;
 using ModelContextProtocol.Protocol;
+using ModelContextProtocol.Server;
 using OneOf;
 
 namespace LspUse.McpServer.Tools;
@@ -54,7 +54,7 @@ public static class GoToImplementationTool
             {
                 var implementations = success.Locations;
                 logger.LogInformation("MCP GoToImplementationTool returning {Count} locations", implementations.Count());
-                
+
                 if (!implementations.Any())
                 {
                     return [new TextContentBlock { Text = $"Found 0 implementations for symbol at {GetRelativeFilePath(file)}:{line}:{character}" }];
@@ -109,25 +109,25 @@ public static class GoToImplementationTool
         {
             var filePath = GetRelativeFilePath(fileGroup.Key);
             var implementationsInFile = fileGroup.OrderBy(i => i.StartLine).ToList();
-            
+
             var fileHeader = $"{filePath} ({implementationsInFile.Count} implementation{(implementationsInFile.Count != 1 ? "s" : "")})";
-            
+
             var sb = new StringBuilder(fileHeader);
-            
+
             foreach (var implementation in implementationsInFile)
             {
                 var line = implementation.StartLine ?? 0; // Already 1-based
                 var character = implementation.StartCharacter ?? 0; // Already 1-based
-                
+
                 sb.AppendLine();
                 sb.Append($"  {line}:{character}");
-                
+
                 if (!string.IsNullOrWhiteSpace(implementation.Text))
                 {
                     sb.Append($" - {implementation.Text.Trim()}");
                 }
             }
-            
+
             yield return new TextContentBlock { Text = sb.ToString() };
         }
     }

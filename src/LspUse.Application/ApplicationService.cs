@@ -65,6 +65,11 @@ public class ApplicationService : IApplicationService
         LspConfigurationService lspConfigurationService)
     {
         ArgumentNullException.ThrowIfNull(options);
+        ArgumentNullException.ThrowIfNull(handlers);
+        ArgumentNullException.ThrowIfNull(logger);
+        ArgumentNullException.ThrowIfNull(loggerFactory);
+        ArgumentNullException.ThrowIfNull(languageIdMapper);
+        ArgumentNullException.ThrowIfNull(lspConfigurationService);
 
         _config = options.Value;
         _lspNotificationHandlers = handlers ?? [];
@@ -95,13 +100,8 @@ public class ApplicationService : IApplicationService
         if (_config.Environment != null)
         {
             foreach (var envVar in _config.Environment)
-            {
                 processStartInfo.Environment.Add(envVar.Key, envVar.Value);
-            }
         }
-
-        // TBD whether this is needed on linux
-        processStartInfo.Environment.Add("DOTNET_USE_POLLING_FILE_WATCHER", "true");
 
         _process = new Process
         {
@@ -206,8 +206,8 @@ public class ApplicationService : IApplicationService
         );
 
         await _languageServer.InitializedAsync(new
-        {
-        },
+            {
+            },
             cancellationToken
         );
 
@@ -286,10 +286,10 @@ public class ApplicationService : IApplicationService
                 {
                     var references = await LanguageServer
                         .ReferencesAsync(new DocumentClientRequest
-                        {
-                            Document = fileUri,
-                            Position = request.Position.ToZeroBased(),
-                        },
+                            {
+                                Document = fileUri,
+                                Position = request.Position.ToZeroBased(),
+                            },
                             cancellationToken
                         );
 
@@ -338,10 +338,10 @@ public class ApplicationService : IApplicationService
                 async (fileUri) =>
                 {
                     var definitions = await LanguageServer.DefinitionAsync(new DocumentClientRequest
-                    {
-                        Document = fileUri,
-                        Position = request.Position.ToZeroBased(),
-                    },
+                        {
+                            Document = fileUri,
+                            Position = request.Position.ToZeroBased(),
+                        },
                         cancellationToken
                     );
 
@@ -505,6 +505,9 @@ public class ApplicationService : IApplicationService
             _process?.HasExited
         );
 
+        // Generate debug context - always include this regardless of success/failure
+        var debugContext = GetCompletionDebugContext(request.FilePath, request.Position);
+
         try
         {
             var result = await ExecuteWithFileLifecycleAsync(request.FilePath,
@@ -525,6 +528,7 @@ public class ApplicationService : IApplicationService
                     {
                         Items = count > 0 ? completionList?.Items ?? [] : [],
                         IsIncomplete = completionList?.IsIncomplete ?? false,
+                        DebugContext = debugContext,
                     };
                 },
                 cancellationToken
@@ -573,9 +577,10 @@ public class ApplicationService : IApplicationService
             EnsureFileExists(request.FilePath, out var absoluteFileUri);
 
             await OpenFileOnLspAsync(absoluteFileUri, cancellationToken);
-            
+
             // First, get document symbols to find what symbol was clicked
             DocumentSymbol? clickedSymbol = null;
+
             try
             {
                 var documentSymbols = await LanguageServer.DocumentSymbolAsync(
@@ -588,31 +593,36 @@ public class ApplicationService : IApplicationService
                 var symbols = documentSymbols
                     ?.Where(x => x.Location != null) // Filter out symbols without locations
                     .Select(x => new DocumentSymbol
-                    {
-                        Name = x.Name,
-                        ContainerName = x.ContainerName,
-                        Kind = x.Kind.ToString(),
-                        Location = x.Location!.ToSymbolLocation(),
-                        Depth = 0 // We don't need depth calculation for position lookup
-                    })
+                        {
+                            Name = x.Name,
+                            ContainerName = x.ContainerName,
+                            Kind = x.Kind.ToString(),
+                            Location = x.Location!.ToSymbolLocation(),
+                            Depth = 0, // We don't need depth calculation for position lookup
+                        }
+                    )
                     .ToList() ?? [];
-                
+
                 clickedSymbol = FindSymbolAtPosition(symbols, request.Position);
-                _logger.LogInformation("[Hover] Found symbol at position: {SymbolName} ({SymbolKind})", 
-                    clickedSymbol?.Name ?? "None", 
-                    clickedSymbol?.Kind ?? "Unknown");
+                _logger.LogInformation(
+                    "[Hover] Found symbol at position: {SymbolName} ({SymbolKind})",
+                    clickedSymbol?.Name ?? "None",
+                    clickedSymbol?.Kind ?? "Unknown"
+                );
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "[Hover] Failed to get document symbols, continuing with hover only");
+                _logger.LogWarning(ex,
+                    "[Hover] Failed to get document symbols, continuing with hover only"
+                );
             }
-            
+
             // Then get hover information
             var hover = await LanguageServer.HoverAsync(new DocumentClientRequest
-            {
-                Document = absoluteFileUri,
-                Position = request.Position.ToZeroBased(),
-            },
+                {
+                    Document = absoluteFileUri,
+                    Position = request.Position.ToZeroBased(),
+                },
                 cancellationToken
             );
 
@@ -664,12 +674,12 @@ public class ApplicationService : IApplicationService
 
             var documentSymbols = matchingSymbols
                 .Select(s => new DocumentSymbol
-                {
-                    Name = s.Name ?? string.Empty,
-                    Kind = s.Kind?.ToString() ?? "Unknown",
-                    ContainerName = s.ContainerName,
-                    Location = s.Location?.ToSymbolLocation(),
-                }
+                    {
+                        Name = s.Name ?? string.Empty,
+                        Kind = s.Kind?.ToString() ?? "Unknown",
+                        ContainerName = s.ContainerName,
+                        Location = s.Location?.ToSymbolLocation(),
+                    }
                 )
                 .ToList();
 
@@ -803,15 +813,15 @@ public class ApplicationService : IApplicationService
 
         // Open file on the LSP
         await LanguageServer.DidOpenAsync(new DidOpenTextDocumentParams
-        {
-            TextDocument = new TextDocumentItem
             {
-                Version = 1,
-                Uri = fileUri,
-                LanguageId = _languageIdMapper.MapFileToLanguageId(fileUri.LocalPath),
-                Text = content,
+                TextDocument = new TextDocumentItem
+                {
+                    Version = 1,
+                    Uri = fileUri,
+                    LanguageId = _languageIdMapper.MapFileToLanguageId(fileUri.LocalPath),
+                    Text = content,
+                },
             },
-        },
             cancellationToken
         );
 
@@ -823,9 +833,9 @@ public class ApplicationService : IApplicationService
         //TODO: Do we need to check for file existance again? No don't think so
 
         await LanguageServer.DidCloseAsync(new DidCloseTextDocumentParams
-        {
-            TextDocument = fileUri.ToDocumentIdentifier(),
-        },
+            {
+                TextDocument = fileUri.ToDocumentIdentifier(),
+            },
             cancellationToken
         );
 
@@ -881,12 +891,12 @@ public class ApplicationService : IApplicationService
 
                     var symbols = documentSymbols
                         ?.Select(x => new DocumentSymbol
-                        {
-                            Name = x.Name,
-                            ContainerName = x.ContainerName,
-                            Kind = x.Kind.ToString(),
-                            Location = x.Location?.ToSymbolLocation(),
-                        }
+                            {
+                                Name = x.Name,
+                                ContainerName = x.ContainerName,
+                                Kind = x.Kind.ToString(),
+                                Location = x.Location?.ToSymbolLocation(),
+                            }
                         )
                         .ToList() ?? [];
 
@@ -928,7 +938,10 @@ public class ApplicationService : IApplicationService
 
                     // Filter by depth if specified
                     if (effectiveMaxDepth.HasValue)
-                        filteredSymbols = filteredSymbols.Where(s => s.Depth <= effectiveMaxDepth.Value);
+                    {
+                        filteredSymbols =
+                            filteredSymbols.Where(s => s.Depth <= effectiveMaxDepth.Value);
+                    }
 
                     // Filter by symbol kinds
                     if (symbolsSettings.Kinds != null && symbolsSettings.Kinds.Length > 0)
@@ -963,7 +976,8 @@ public class ApplicationService : IApplicationService
         }
     }
 
-    private static IEnumerable<DocumentSymbol> CalculateSymbolDepths(IEnumerable<DocumentSymbol> symbols)
+    private static IEnumerable<DocumentSymbol> CalculateSymbolDepths(
+        IEnumerable<DocumentSymbol> symbols)
     {
         var symbolList = symbols.ToList();
         var containerToDepthMap = new Dictionary<string, int>();
@@ -987,7 +1001,8 @@ public class ApplicationService : IApplicationService
             visited.Add(containerName);
 
             // Find the container's own container
-            var parentContainer = symbolToContainerMap[containerName].FirstOrDefault();
+            var parentContainer = symbolToContainerMap[containerName]
+                .FirstOrDefault();
             var depth = CalculateDepth(parentContainer, visited) + 1;
 
             visited.Remove(containerName);
@@ -998,9 +1013,10 @@ public class ApplicationService : IApplicationService
 
         // Calculate depth for each symbol
         return symbolList.Select(symbol => symbol with
-        {
-            Depth = CalculateDepth(symbol.ContainerName, new HashSet<string>())
-        });
+            {
+                Depth = CalculateDepth(symbol.ContainerName, new HashSet<string>()),
+            }
+        );
     }
 
     public async Task<OneOf<IEnumerable<DocumentDiagnostic>, ApplicationServiceError>>
@@ -1106,11 +1122,11 @@ public class ApplicationService : IApplicationService
                 async (fileUri) =>
                 {
                     var workspaceEdit = await LanguageServer.RenameAsync(new RenameParams
-                    {
-                        TextDocument = fileUri.ToDocumentIdentifier(),
-                        Position = request.Position.ToZeroBased(),
-                        NewName = request.NewName,
-                    },
+                        {
+                            TextDocument = fileUri.ToDocumentIdentifier(),
+                            Position = request.Position.ToZeroBased(),
+                            NewName = request.NewName,
+                        },
                         cancellationToken
                     );
 
@@ -1466,9 +1482,7 @@ public class ApplicationService : IApplicationService
                     var identifier = registration.RegisterOptions?.Identifier;
                     if (!string.IsNullOrEmpty(identifier) &&
                         !diagnosticProviderIds.Contains(identifier))
-                    {
                         diagnosticProviderIds.Add(identifier);
-                    }
                 }
             }
         }
@@ -1494,10 +1508,10 @@ public class ApplicationService : IApplicationService
             try
             {
                 var response = await LanguageServer.DiagnosticAsync(new TextDocumentDiagnosticParams
-                {
-                    TextDocument = fileUri.ToDocumentIdentifier(),
-                    Identifier = identifier,
-                },
+                    {
+                        TextDocument = fileUri.ToDocumentIdentifier(),
+                        Identifier = identifier,
+                    },
                     cancellationToken
                 );
 
@@ -1578,16 +1592,16 @@ public class ApplicationService : IApplicationService
             };
 
             documentDiagnostics.Add(new DocumentDiagnostic
-            {
-                Severity = severity,
-                StartLine = (uint)diagnostic.Range.Start.Line,
-                StartCharacter = (uint)diagnostic.Range.Start.Character,
-                EndLine = (uint)diagnostic.Range.End.Line,
-                EndCharacter = (uint)diagnostic.Range.End.Character,
-                Message = diagnostic.Message ?? string.Empty,
-                Code = diagnostic.Code,
-                CodeDescription = diagnostic.CodeDescription?.Href,
-            }
+                {
+                    Severity = severity,
+                    StartLine = (uint)diagnostic.Range.Start.Line,
+                    StartCharacter = (uint)diagnostic.Range.Start.Character,
+                    EndLine = (uint)diagnostic.Range.End.Line,
+                    EndCharacter = (uint)diagnostic.Range.End.Character,
+                    Message = diagnostic.Message ?? string.Empty,
+                    Code = diagnostic.Code,
+                    CodeDescription = diagnostic.CodeDescription?.Href,
+                }
             );
         }
 
@@ -1668,11 +1682,14 @@ public class ApplicationService : IApplicationService
         return null;
     }
 
-    private static DocumentSymbol? FindSymbolAtPosition(IEnumerable<DocumentSymbol> symbols, EditorPosition position)
+    private static DocumentSymbol? FindSymbolAtPosition(IEnumerable<DocumentSymbol> symbols,
+        EditorPosition position)
     {
         // Find all symbols that contain the given position
         var matchingSymbols = symbols
-            .Where(symbol => symbol.Location != null && IsPositionInSymbol(symbol.Location, position))
+            .Where(symbol => symbol.Location != null &&
+                             IsPositionInSymbol(symbol.Location, position)
+            )
             .ToList();
 
         if (!matchingSymbols.Any())
@@ -1714,5 +1731,67 @@ public class ApplicationService : IApplicationService
             return false;
 
         return true;
+    }
+
+    private string GetCompletionDebugContext(string filePath, EditorPosition position)
+    {
+        try
+        {
+            // Input position is 1-based (line 1, character 1 = first line, first character)
+            // File reading and string indexing is 0-based
+            var lines = File.ReadAllLines(filePath);
+            var lineIndex = (int)position.Line - 1; // Convert to 0-based for array access
+            var charIndex = (int)position.Character - 1; // Convert to 0-based for string indexing
+
+            if (lineIndex >= 0 && lineIndex < lines.Length)
+            {
+                var currentLine = lines[lineIndex];
+                var clampedCharIndex = Math.Max(0, Math.Min(charIndex, currentLine.Length));
+
+                // Get context around the cursor - look backwards for meaningful context
+                var contextStart = Math.Max(0, clampedCharIndex - 30);
+                var contextEnd = Math.Min(currentLine.Length, clampedCharIndex + 10);
+                var context = currentLine.Substring(contextStart, contextEnd - contextStart);
+
+                // Mark the cursor position with |
+                var cursorOffset = clampedCharIndex - contextStart;
+                if (cursorOffset >= 0 && cursorOffset <= context.Length)
+                    context = context.Insert(cursorOffset, "|");
+
+                // Trim leading whitespace for cleaner display
+                context = context.TrimStart();
+
+                return $"  Cursor @{position.Line}:{position.Character}\n  {context}";
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex,
+                "Failed to read completion context from {FilePath}:{Line}:{Character}",
+                filePath,
+                position.Line,
+                position.Character
+            );
+        }
+
+        return $"  Cursor @{position.Line}:{position.Character}\n  Unable to read context";
+    }
+
+    private static string GetRelativeFilePath(string filePath)
+    {
+        try
+        {
+            var currentDir = Directory.GetCurrentDirectory();
+
+            if (Path.IsPathRooted(filePath) &&
+                filePath.StartsWith(currentDir, StringComparison.OrdinalIgnoreCase))
+                return Path.GetRelativePath(currentDir, filePath);
+        }
+        catch
+        {
+            // Fall back to original path if any error occurs
+        }
+
+        return filePath;
     }
 }

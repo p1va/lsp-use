@@ -95,16 +95,16 @@ public static class DocumentDiagnosticsTool
         {
             var severity = severityGroup.Key;
             var diagnosticsInGroup = severityGroup.OrderBy(d => d.StartLine).ThenBy(d => d.StartCharacter).ToList();
-            
+
             var severityBlock = new StringBuilder();
             severityBlock.AppendLine($"{severity}s ({diagnosticsInGroup.Count}):");
 
             foreach (var diagnostic in diagnosticsInGroup)
             {
                 var position = FormatDiagnosticPosition(diagnostic);
-                
+
                 severityBlock.AppendLine($"  {position} {diagnostic.Message}");
-                
+
                 if (!string.IsNullOrEmpty(diagnostic.Code))
                 {
                     var ruleInfo = diagnostic.Code;

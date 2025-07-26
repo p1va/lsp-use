@@ -3,8 +3,8 @@ using System.Text;
 using LspUse.Application;
 using LspUse.Application.Models;
 using Microsoft.Extensions.Logging;
-using ModelContextProtocol.Server;
 using ModelContextProtocol.Protocol;
+using ModelContextProtocol.Server;
 using OneOf;
 
 namespace LspUse.McpServer.Tools;
@@ -54,7 +54,7 @@ public static class GoToTypeDefinitionTool
             {
                 var typeDefinitions = success.Locations;
                 logger.LogInformation("MCP GoToTypeDefinitionTool returning {Count} locations", typeDefinitions.Count());
-                
+
                 if (!typeDefinitions.Any())
                 {
                     return [new TextContentBlock { Text = $"Found 0 type definitions for symbol at {GetRelativeFilePath(file)}:{line}:{character}" }];
@@ -109,25 +109,25 @@ public static class GoToTypeDefinitionTool
         {
             var filePath = GetRelativeFilePath(fileGroup.Key);
             var typeDefinitionsInFile = fileGroup.OrderBy(t => t.StartLine).ToList();
-            
+
             var fileHeader = $"{filePath} ({typeDefinitionsInFile.Count} type definition{(typeDefinitionsInFile.Count != 1 ? "s" : "")})";
-            
+
             var sb = new StringBuilder(fileHeader);
-            
+
             foreach (var typeDefinition in typeDefinitionsInFile)
             {
                 var line = typeDefinition.StartLine ?? 0; // Already 1-based
                 var character = typeDefinition.StartCharacter ?? 0; // Already 1-based
-                
+
                 sb.AppendLine();
                 sb.Append($"  {line}:{character}");
-                
+
                 if (!string.IsNullOrWhiteSpace(typeDefinition.Text))
                 {
                     sb.Append($" - {typeDefinition.Text.Trim()}");
                 }
             }
-            
+
             yield return new TextContentBlock { Text = sb.ToString() };
         }
     }
