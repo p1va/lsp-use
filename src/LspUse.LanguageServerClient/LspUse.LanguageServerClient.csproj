@@ -1,17 +1,10 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
     <ItemGroup>
-      <PackageReference Include="StreamJsonRpc" Version="2.22.11" />
-      <PackageReference Include="StreamRpc" Version="2.1.56" />
-    </ItemGroup>
-
-    <ItemGroup>
-      <Reference Include="Microsoft.Extensions.Logging.Abstractions">
-        <HintPath>..\..\..\..\.nuget\packages\microsoft.extensions.logging.abstractions\9.0.0\lib\net9.0\Microsoft.Extensions.Logging.Abstractions.dll</HintPath>
-      </Reference>
-      <Reference Include="Microsoft.Extensions.Options">
-        <HintPath>..\..\..\..\.nuget\packages\microsoft.extensions.options\10.0.0-preview.6.25358.103\lib\net9.0\Microsoft.Extensions.Options.dll</HintPath>
-      </Reference>
+      <PackageReference Include="StreamJsonRpc" />
+      <PackageReference Include="StreamRpc" />
+      <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
+      <PackageReference Include="Microsoft.Extensions.Options" />
     </ItemGroup>
 
 </Project>

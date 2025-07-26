@@ -9,6 +9,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Files", "Files", "{28919704
 		.mcp.json = .mcp.json
 		Directory.Build.props = Directory.Build.props
 		CLAUDE.md = CLAUDE.md
+		Directory.Packages.props = Directory.Packages.props
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "test", "test", "{5A6AC41D-05E1-4B6D-9AA4-F8C506CAEBD4}"

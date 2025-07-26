@@ -34,12 +34,12 @@
 
   <!-- Dependencies -->
   <ItemGroup>
-    <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="10.0.0-preview.6.25358.103"/>
-    <PackageReference Include="OneOf" Version="3.0.271"/>
-    <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.0-preview.6.25358.103"/>
-    <PackageReference Include="ModelContextProtocol" Version="0.3.0-preview.3"/>
-    <PackageReference Include="System.CommandLine" Version="2.0.0-beta6.25358.103"/>
-    <PackageReference Include="YamlDotNet" Version="16.3.0"/>
+    <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" />
+    <PackageReference Include="OneOf" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" />
+    <PackageReference Include="ModelContextProtocol" />
+    <PackageReference Include="System.CommandLine" />
+    <PackageReference Include="YamlDotNet" />
   </ItemGroup>
 
   <!-- Embedded LSP binaries inside nupkg -->
